@@ -6,7 +6,7 @@
  * and redistribution of this file and for a
  * DISCLAIMER OF ALL WARRANTIES.
  *
- * $Id: odbc.c,v 1.31 2004/03/22 05:31:36 chw Exp chw $
+ * $Id: odbc.c,v 1.33 2004/06/28 20:25:48 chw Exp chw $
  */
 
 #undef ODBCVER
@@ -36,10 +36,18 @@
 #include <sqlucode.h>
 #endif
 
+#ifndef HAVE_TYPE_SQLTCHAR
+#ifdef UNICODE
+typedef SQLWCHAR SQLTCHAR;
+#else
+typedef SQLCHAR SQLTCHAR;
+#endif
+#endif
+
 #ifndef HAVE_RB_DEFINE_ALLOC_FUNC
 #define rb_define_alloc_func(cls, func) \
     rb_define_singleton_method(cls, "new", func, -1)
-#define rb_undefine_alloc_fund(cls) \
+#define rb_undefine_alloc_func(cls) \
     rb_undef_method(CLASS_OF(cls), "new")
 #endif
 
@@ -433,6 +441,7 @@ uc_free(SQLWCHAR *str)
  *----------------------------------------------------------------------
  */
 
+#ifndef HAVE_RB_DEFINE_ALLOC_FUNC
 static VALUE
 dsn_new(VALUE self)
 {
@@ -441,6 +450,7 @@ dsn_new(VALUE self)
     rb_obj_call_init(obj, 0, NULL);
     return obj;
 }
+#endif
 
 static VALUE
 dsn_init(VALUE self)
@@ -458,6 +468,7 @@ dsn_init(VALUE self)
  *----------------------------------------------------------------------
  */
 
+#ifndef HAVE_RB_DEFINE_ALLOC_FUNC
 static VALUE
 drv_new(VALUE self)
 {
@@ -466,6 +477,7 @@ drv_new(VALUE self)
     rb_obj_call_init(obj, 0, NULL);
     return obj;
 }
+#endif
 
 static VALUE
 drv_init(VALUE self)
@@ -1733,6 +1745,9 @@ make_coltypes(SQLHSTMT hstmt, int ncols, char **msgp)
 	    size = sizeof (TIMESTAMP_STRUCT);
 	    break;
 	case SQL_LONGVARBINARY:
+	    type = SQL_C_BINARY;
+	    size = SQL_NO_TOTAL;
+	    break;
 	case SQL_LONGVARCHAR:
 #ifdef UNICODE
 	case SQL_WLONGVARCHAR:
@@ -4130,7 +4145,9 @@ stmt_fetch1(VALUE self, int bang)
     if (succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt, ret, &err, msg)) {
 	return do_fetch(q, DOFETCH_ARY | (bang ? DOFETCH_BANG : 0));
     }
-    if (err != NULL && strncmp(err, "IM001", 5) == 0) {
+    if (err != NULL &&
+	(strncmp(err, "IM001", 5) == 0 ||
+	 strncmp(err, "HYC00", 5) == 0)) {
 usef:
 	/* Fallback to SQLFetch() when others not implemented */
 	msg = "SQLFetch";
@@ -4334,7 +4351,9 @@ stmt_fetch_hash1(int argc, VALUE *argv, VALUE self, int bang)
     if (succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt, ret, &err, msg)) {
 	return do_fetch(q, mode | (bang ? DOFETCH_BANG : 0));
     }
-    if (err != NULL && strncmp(err, "IM001", 5) == 0) {
+    if (err != NULL &&
+	(strncmp(err, "IM001", 5) == 0 ||
+	 strncmp(err, "HYC00", 5) == 0)) {
 usef:
 	/* Fallback to SQLFetch() when others not implemented */
 	msg = "SQLFetch";
@@ -5408,9 +5427,9 @@ Init_odbc()
     rb_define_alloc_func(Cdbc, dbc_alloc);
 #else
     rb_define_alloc_func(Cdbc, dbc_new);
-#endif
     rb_define_alloc_func(Cdsn, dsn_new);
     rb_define_alloc_func(Cdrv, drv_new);
+#endif
     rb_define_method(Cdsn, "initialize", dsn_init, 0);
     rb_define_method(Cdrv, "initialize", drv_init, 0);
 
@@ -5580,6 +5599,7 @@ Init_odbc()
     rb_define_method(Cproc, "initialize", stmt_proc_init, -1);
     rb_define_method(Cproc, "call", stmt_proc_call, -1);
     rb_define_method(Cproc, "[]", stmt_proc_call, -1);
+    rb_attr(Cproc, rb_intern("statement"), 1, 0, 0);
 #ifndef HAVE_RB_DEFINE_ALLOC_FUNC
     rb_enable_super(Cproc, "call");
     rb_enable_super(Cproc, "[]");

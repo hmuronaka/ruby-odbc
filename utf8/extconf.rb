@@ -17,6 +17,13 @@ end
 dir_config("odbc")
 have_header("sql.h")
 have_header("sqlext.h")
+begin
+  have_type("SQLTCHAR", "sqltypes.h")
+rescue
+  puts "WARNING: please check sqltypes.h for SQLTCHAR manually,"
+  puts "WARNING: if defined, modify CFLAGS in Makefile to contain"
+  puts "WARNING: the option -DHAVE_TYPE_SQLTCHAR"
+end
 $have_odbcinst_h = have_header("odbcinst.h")
 
 if PLATFORM =~ /mswin32/ then

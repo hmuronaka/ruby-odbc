@@ -1,6 +1,16 @@
 ODBC binding for Ruby
 ---------------------
 
+Mon Jun 28 2004 version 0.993 released
+
+	* use HAVE_TYPE_SQLTCHAR from extconf.rb for old iODBC versions
+	* don't rb_define_alloc_func of dsn_new/drv_new for Ruby >= 1.8,
+	  gives stack overflows, thanks to Pedro Luis Castedo Cepeda
+	  for fixing
+	* fixes for iODBC driver manager concerning SQLFetchScroll
+	  availability (SQL state codes IM001 vs HYC000)
+	* blob handling fix as suggested by Kaspar Schiess
+
 Mon Mar 22 2004 version 0.992 released
 
 	* fixed buggy UTF8->Unicode conversion code
