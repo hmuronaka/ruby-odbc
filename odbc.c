@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * $Id: odbc.c,v 1.19 2001/09/07 05:46:53 chw Exp chw $
+ * $Id: odbc.c,v 1.20 2001/10/11 11:09:33 chw Exp chw $
  */
 
 #undef ODBCVER
@@ -141,6 +141,7 @@ static VALUE rb_cDate;
 #define INFO_TPRIV    6
 #define INFO_PROCS    7
 #define INFO_PROCCOLS 8
+#define INFO_SPECCOLS 9
 
 /*
  * Modes for make_result
@@ -1018,7 +1019,6 @@ dbc_connect(int argc, VALUE *argv, VALUE self)
     VALUE dsn, user, passwd;
     char *sdsn, *suser = "", *spasswd = "";
     SQLHDBC dbc;
-    SQLSMALLINT ic, iclen;
 
     rb_scan_args(argc, argv, "12", &dsn, &user, &passwd);
     if (rb_obj_is_kind_of(dsn, Cdsn) == Qtrue) {
@@ -1590,10 +1590,11 @@ static VALUE
 dbc_info(int argc, VALUE *argv, VALUE self, int mode)
 {
     DBC *p = get_dbc(self);
-    VALUE which = Qnil, which2 = Qnil;
+    VALUE which = Qnil, which2 = Qnil, which3 = Qnil;
     char *swhich = NULL, *swhich2 = NULL, *msg, *argspec = NULL;
     SQLHSTMT hstmt;
     int needstr = 1, itype = SQL_ALL_TYPES;
+    int iid = SQL_BEST_ROWID, iscope = SQL_SCOPE_CURROW;
 
     if (p->hdbc == SQL_NULL_HDBC) {
 	rb_raise(Cerror, set_err("No connection"));
@@ -1610,17 +1611,18 @@ dbc_info(int argc, VALUE *argv, VALUE self, int mode)
 	argspec = "01";
 	break;
     case INFO_INDEXES:
-	argspec = "1";
-	break;
     case INFO_FORKEYS:
     case INFO_PROCCOLS:
 	argspec = "11";
+	break;
+    case INFO_SPECCOLS:
+	argspec = "12";
 	break;
     default:
 	rb_raise(Cerror, set_err("Invalid info mode"));
 	break;
     }
-    rb_scan_args(argc, argv, argspec, &which, &which2);
+    rb_scan_args(argc, argv, argspec, &which, &which2, &which3);
     if (which != Qnil) {
 	if (needstr) {
 	    Check_Type(which, T_STRING);
@@ -1630,8 +1632,15 @@ dbc_info(int argc, VALUE *argv, VALUE self, int mode)
 	}
     }
     if (which2 != Qnil) {
-	Check_Type(which2, T_STRING);
-	swhich2 = STR2CSTR(which2);
+	if (mode == INFO_SPECCOLS) {
+	    iid = NUM2INT(which2);
+	} else if (mode != INFO_INDEXES) {
+	    Check_Type(which2, T_STRING);
+	    swhich2 = STR2CSTR(which2);
+	}
+    }
+    if (which3 != Qnil) {
+	iscope = NUM2INT(which3);
     }
     if (!succeeded(SQL_NULL_HENV, p->hdbc, SQL_NULL_HSTMT,
 		   SQLAllocStmt(p->hdbc, &hstmt), "SQLAllocStmt")) {
@@ -1662,7 +1671,9 @@ dbc_info(int argc, VALUE *argv, VALUE self, int mode)
     case INFO_INDEXES:
 	if (!succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, hstmt,
 		       SQLStatistics(hstmt, NULL, 0, NULL, 0,
-				     swhich, SQL_NTS, SQL_INDEX_ALL,
+				     swhich, SQL_NTS,
+				     RTEST(which2) ?
+				     SQL_INDEX_UNIQUE : SQL_INDEX_ALL,
 				     SQL_ENSURE), "SQLStatistics")) {
 	    goto error;
 	}
@@ -1704,6 +1715,15 @@ dbc_info(int argc, VALUE *argv, VALUE self, int mode)
 					   swhich, SQL_NTS,
 					   swhich2, SQL_NTS),
 		       "SQLProcedureColumns")) {
+	    goto error;
+	}
+	break;
+    case INFO_SPECCOLS:
+	if (!succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, hstmt,
+		       SQLSpecialColumns(hstmt, iid, NULL, 0, NULL, 0,
+					 swhich, SQL_NTS,
+					 iscope, SQL_NULLABLE),
+					 "SQLSpecialColumns")) {
 	    goto error;
 	}
 	break;
@@ -1769,6 +1789,12 @@ static VALUE
 dbc_proccols(int argc, VALUE *argv, VALUE self)
 {
     return dbc_info(argc, argv, self, INFO_PROCCOLS);
+}
+
+static VALUE
+dbc_speccols(int argc, VALUE *argv, VALUE self)
+{
+    return dbc_info(argc, argv, self, INFO_SPECCOLS);
 }
 
 /*
@@ -3142,7 +3168,7 @@ do_fetch(STMT *q, int mode)
 		    rb_raise(Cerror, "%s", get_err(SQL_NULL_HENV, SQL_NULL_HDBC,
 						   q->hstmt));
 		}
-		need += 2 * strlen(name) + 1;
+		need += 2 * (strlen(name) + 1);
 		if (!succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt,
 			       SQLColAttributes(q->hstmt,
 						(SQLUSMALLINT) (i + 1),
@@ -4374,6 +4400,31 @@ static struct {
     O_CONST2(SQL_CP_RELAXED_MATCH, 0),
     O_CONST2(SQL_CP_MATCH_DEFAULT, 0),
 #endif
+#ifdef SQL_SCOPE_CURROW
+    O_CONST(SQL_SCOPE_CURROW),
+#else
+    O_CONST2(SQL_SCOPE_CURROW, 0),
+#endif
+#ifdef SQL_SCOPE_TRANSACTION
+    O_CONST(SQL_SCOPE_TRANSACTION),
+#else
+    O_CONST2(SQL_SCOPE_TRANSACTION, 0),
+#endif
+#ifdef SQL_SCOPE_SESSION
+    O_CONST(SQL_SCOPE_SESSION),
+#else
+    O_CONST2(SQL_SCOPE_SESSION, 0),
+#endif
+#ifdef SQL_BEST_ROWID
+    O_CONST(SQL_BEST_ROWID),
+#else
+    O_CONST2(SQL_BEST_ROWID, 0),
+#endif
+#ifdef SQL_ROWVER
+    O_CONST(SQL_ROWVER),
+#else
+    O_CONST2(SQL_ROWVER, 0),
+#endif
     { NULL, 0 }
 };
 
@@ -4504,6 +4555,7 @@ Init_odbc()
     rb_define_method(Cdbc, "table_privileges", dbc_tpriv, -1);
     rb_define_method(Cdbc, "procedures", dbc_procs, -1);
     rb_define_method(Cdbc, "procedure_columns", dbc_proccols, -1);
+    rb_define_method(Cdbc, "special_columns", dbc_speccols, -1);
     rb_define_method(Cdbc, "prepare", stmt_prep, -1);
     rb_define_method(Cdbc, "run", stmt_run, -1);
     rb_define_method(Cdbc, "do", stmt_do, -1);

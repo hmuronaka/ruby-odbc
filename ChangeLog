@@ -1,6 +1,14 @@
 ODBC binding for Ruby
 ---------------------
 
+Thu Oct 11 2001 version 0.94 released
+
+	* doc updated
+	* fixed off-by-one bug in do_fetch function
+	* added some more SQL_* constants
+	* added ODBC::Database.special_columns method
+	* added unique flag to ODBC::Database.indexes
+
 Fri Sep 07 2001 version 0.93 released
 
 	* doc updated

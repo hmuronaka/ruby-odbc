@@ -27,7 +27,7 @@
   <body>
     <h1><a name="reference">Ruby ODBC Reference</a></h1>
     <div class = "lastmodifed">
-      Last update: Fri, 07 September 2001
+      Last update: Thu, 11 October 2001
     </div>
     <hr>
     <div>
@@ -276,10 +276,13 @@
 	<dd>Returns an <a href="#ODBC::Statement">ODBC::Statement</a>
 	  with column information
 	  of the given <var>table</var> (String).
-	<dt><a name="indexes"><code>indexes([<var>table</var>])</code></a>
+	<dt><a name="indexes">
+	  <code>indexes([<var>table</var>[,<var>unique</var>]])</code></a>
 	<dd>Returns an <a href="#ODBC::Statement">ODBC::Statement</a>
 	  with index information
-	  of the given <var>table</var> (String).
+	  of the given <var>table</var> (String). If <var>unique</var>
+	  is given and true, information for unique indexes only is
+	  returned.
 	<dt><a name="types"><code>types([<var>tcode</var>])</code></a>
 	<dd>Returns an <a href="#ODBC::Statement">ODBC::Statement</a>
 	  with type information
@@ -304,6 +307,21 @@
 	    <code>procedure_columns([<var>p</var>])</code></a>
 	<dd>Returns an <a href="#ODBC::Statement">ODBC::Statement</a>
 	  with information about stored procedures.
+	<dt><a name="special_columns">
+	  <code>special_columns([<var>table</var>[,<var>id</var>,
+	    <var>scope</var>]])</code></a>
+	<dd>Returns an <a href="#ODBC::Statement">ODBC::Statement</a>
+	  with column information
+	  of the given <var>table</var> (String) indicating the
+	  optimal unique or identifying columns.
+	  <var>id</var> may
+	  be specified as <code>ODBC::SQL_BEST_ROWID</code> or
+	  <code>ODBC::SQL_ROW_VER</code>. <var>scope</var> may be
+	  specified as <code>ODBC::SQL_SCOPE_CURROW</code>,
+	  <code>ODBC::SQL_SCOPE_TRANSACTION</code>, or
+	  <code>ODBC::SQL_SCOPE_SESSION</code>. If omitted the
+	  defaults are <code>ODBC::SQL_BEST_ROWID</code> and
+	  <code>ODBC::SQL_SCOPE_CURROW</code>.
 	<dt><a name="run"><code>run(<var>sql</var>,
 	      [<var>args ...</var>])</code></a>
 	<dd>Prepares and executes the query specified by <var>sql</var>
