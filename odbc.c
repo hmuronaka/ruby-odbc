@@ -1,6 +1,6 @@
 /*
  * ODBC-Ruby binding
- * Copyright (C) 2001-2002 Christian Werner
+ * Copyright (C) 2001-2003 Christian Werner
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * $Id: odbc.c,v 1.22 2002/05/12 10:37:54 chw Exp chw $
+ * $Id: odbc.c,v 1.23 2003/03/15 13:00:41 chw Exp chw $
  */
 
 #undef ODBCVER
@@ -110,6 +110,7 @@ typedef struct stmt {
     char **dbufs;
     int fetchc;
     int upc;
+    int usef;
 } STMT;
 
 static VALUE Modbc;
@@ -1380,6 +1381,7 @@ make_result(VALUE dbc, SQLHSTMT hstmt, VALUE result, int mode)
 	q->colnames = q->dbufs = NULL;
 	q->fetchc = 0;
 	q->upc = p->upc;
+	q->usef = 0;
 	rb_iv_set(q->self, "@_a", rb_ary_new());
 	rb_iv_set(q->self, "@_h", rb_hash_new());
 	q->dbc = dbc;
@@ -3374,7 +3376,7 @@ stmt_fetch1(VALUE self, int bang)
 {
     STMT *q;
     SQLRETURN ret;
-    char *msg;
+    char *msg, *err;
 #if (ODBCVER < 0x0300)
     SQLUINTEGER nRows;
     SQLUSMALLINT rowStat[1];
@@ -3383,6 +3385,9 @@ stmt_fetch1(VALUE self, int bang)
     Data_Get_Struct(self, STMT, q);
     if (q->ncols <= 0) {
 	return Qnil;
+    }
+    if (q->usef) {
+	goto usef;
     }
 #if (ODBCVER < 0x0300)
     msg = "SQLExtendedFetch(SQL_FETCH_NEXT)";
@@ -3398,7 +3403,23 @@ stmt_fetch1(VALUE self, int bang)
     if (succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt, ret, msg)) {
 	return do_fetch(q, DOFETCH_ARY | (bang ? DOFETCH_BANG : 0));
     }
-    rb_raise(Cerror, "%s", get_err(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt));
+    err = get_err(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt);
+    if (err != NULL && strncmp(err, "IM001", 5) == 0) {
+usef:
+	/* Fallback to SQLFetch() when others not implemented */
+	msg = "SQLFetch";
+	q->usef = 1;
+	ret = SQLFetch(q->hstmt);
+	if (ret == SQL_NO_DATA) {
+	    (void) tracesql(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt, ret, msg);
+	    return Qnil;
+	}
+	if (succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt, ret, msg)) {
+	    return do_fetch(q, DOFETCH_ARY | (bang ? DOFETCH_BANG : 0));
+	}
+	err = get_err(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt);
+    }
+    rb_raise(Cerror, "%s", err);
     return Qnil;
 }
 
@@ -3560,7 +3581,7 @@ stmt_fetch_hash1(int argc, VALUE *argv, VALUE self, int bang)
     STMT *q;
     SQLRETURN ret;
     int mode = stmt_hash_mode(argc, argv, self);
-    char *msg;
+    char *msg, *err;
 #if (ODBCVER < 0x0300)
     SQLUINTEGER nRows;
     SQLUSMALLINT rowStat[1];
@@ -3569,6 +3590,9 @@ stmt_fetch_hash1(int argc, VALUE *argv, VALUE self, int bang)
     Data_Get_Struct(self, STMT, q);
     if (q->ncols <= 0) {
 	return Qnil;
+    }
+    if (q->usef) {
+	goto usef;
     }
 #if (ODBCVER < 0x0300)
     msg = "SQLExtendedFetch(SQL_FETCH_NEXT)";
@@ -3584,7 +3608,23 @@ stmt_fetch_hash1(int argc, VALUE *argv, VALUE self, int bang)
     if (succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt, ret, msg)) {
 	return do_fetch(q, mode | (bang ? DOFETCH_BANG : 0));
     }
-    rb_raise(Cerror, "%s", get_err(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt));
+    err = get_err(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt);
+    if (err != NULL && strncmp(err, "IM001", 5) == 0) {
+usef:
+	/* Fallback to SQLFetch() when others not implemented */
+	msg = "SQLFetch";
+	q->usef = 1;
+	ret = SQLFetch(q->hstmt);
+	if (ret == SQL_NO_DATA) {
+	    (void) tracesql(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt, ret, msg);
+	    return Qnil;
+	}
+	if (succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt, ret, msg)) {
+	    return do_fetch(q, mode | (bang ? DOFETCH_BANG : 0));
+	}
+	err = get_err(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt);
+    }
+    rb_raise(Cerror, "%s", err);
     return Qnil;
 }
 

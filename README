@@ -1,6 +1,6 @@
-# $Id: README,v 1.14 2002/05/12 07:31:53 chw Exp chw $
+# $Id: README,v 1.15 2003/03/19 07:46:25 chw Exp chw $
 
-ruby-odbc-0.95
+ruby-odbc-0.96
 
 This is an ODBC binding for Ruby. So far it has been tested with
 

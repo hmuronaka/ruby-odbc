@@ -1,7 +1,13 @@
 ODBC binding for Ruby
 ---------------------
 
-Mon May 13 2001 version 0.95 released
+Wed Mar 19 2003 version 0.96 released
+
+	* added fall back to SQLFetch() when SQLFetchScrol(SQL_FETCH_NEXT)
+	  or SQLExtendedFetch(SQL_FETCH_NEXT) report IM001 error,
+	  thanks Kiyonori Takeda <takeda@newsline.net> for testing.
+
+Mon May 13 2002 version 0.95 released
 
 	* doc updated
 	* minor code cleanups
