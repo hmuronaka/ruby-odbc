@@ -1,6 +1,18 @@
 ODBC binding for Ruby
 ---------------------
 
+Wed Aug 15 2001 version 0.9 released
+
+	* doc updated
+	* added alloc/free and ODBC API call tracing
+	  (compile-time, -DTRACING)
+	* added array result for ODBC::Statement.columns
+	* statements are now by default dropped before SQLDisconnect
+	* rewrote resource tracking of environment, database connection
+	  and statement objects due to crashes/hangs on Win32
+	* improved constructors for data/time/timestamp objects
+	* added clone methods for date/time/timestamp objects
+
 Thu Jul 26 2001 version 0.8 released
 
 	* minor doc update

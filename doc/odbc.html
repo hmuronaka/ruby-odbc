@@ -27,7 +27,7 @@
   <body>
     <h1><a name="reference">Ruby ODBC Reference</a></h1>
     <div class = "lastmodifed">
-      Last update: Wed, 25 July 2001
+      Last update: Mon, 13 August 2001
     </div>
     <hr>
     <div>
@@ -45,9 +45,13 @@
           ie all known ODBC drivers.
 	<dt><a name="ODBC::error"><code>error</code></a>
         <dd>Returns the last error messages (String array) or nil.
+	  The layout of the warning/error messages
+	  is described <a href="#ODBC::Error">here</a>.
 	<dt><a name="ODBC::info"><code>info</code></a>
 	<dd>Returns the last driver/driver manager warning messages
 	  (String array) or nil.
+	  The layout of the warning/error messages
+	  is described <a href="#ODBC::Error">here</a>.
 	<dt><a name="ODBC::raise"><code>raise(<var>value</var>)</code></a>
         <dd>Raises an <a href="#ODBC::Error">ODBC::Error</a> exception with
 	  String error message <var>value</var>.
@@ -258,8 +262,12 @@
 	<dt><a name="drvconnect"><code>drvconnect(<var>drv</var>)</code></a>
 	<dd>Connect to a data source specified by <var>drv</var>
 	  (<a href="#ODBC::Driver">ODBC::Driver</a>).
-	<dt><a name="disconnect"><code>disconnect</code></a>
-	<dd>Disconnects from the data source.
+	<dt><a name="disconnect">
+	  <code>disconnect(<var>no_drop=false</var>)</code></a>
+	<dd>Disconnects from the data source, all active statements for the
+	  connection are dropped except when the <var>no_drop</var> argument
+	  is true. The method returns true when the connection was released,
+	  false otherwise.
 	<dt><a name="tables"><code>tables([<var>pattern</var>])</code></a>
 	<dd>Returns an <a href="#ODBC::Statement">ODBC::Statement</a> with
 	  information of all or some (<var>pattern</var> String given)
@@ -318,11 +326,15 @@
 	  the procedure's arguments bound to the statement's parameters
 	  and the statement is bound as parameter in the block, eg
 	  <pre># add customer given name and id
+# and return number of affected rows
+
 addcust = dbc.proc("insert into customer values(?, ?)") { |stmt|
     stmt.nrows
 }
+
 addcust.call("J.R. User", 9999)
-# alternative form: addcust["J.R. User", 9999]</pre>
+
+# alternative to call: addcust["J.R. User", 9999]</pre>
 	<dt><a name="autocommit"><code>autocommit([<var>bool</var>])</code></a>
 	<dd>Sets or queries the autocommit option of the connection.
 	<dt><a name="concurrency">
@@ -379,8 +391,8 @@ addcust.call("J.R. User", 9999)
       <p>
 	When underlying ODBC SQL functions report an error,
 	an <a href="#ODBC:Error">ODBC::Error</a>
-	exception with a corresponding error message from the ODBC driver manager
-	and/or driver is raised.
+	exception with a corresponding error message from the ODBC driver
+	manager and/or driver is raised.
       </p>
       <p>
 	ODBC to Ruby type mapping:
@@ -417,9 +429,10 @@ addcust.call("J.R. User", 9999)
 	<dt><a name="column"><code>column(<var>n</var>)</code></a>
 	<dd>Returns information of the n-th column of the query result
 	  as <a href="#ODBC::Column">ODBC::Column</a>.
-	<dt><a name="columns1"><code>columns</code></a>
+	<dt><a name="columns1"><code>columns(<var>as_ary=false</var>)</code></a>
 	<dd>Returns a hash of column information keyed by column names
-	  (Strings) of the query result. The hash elements are
+	  (Strings) of the query result. If <var>as_ary</var> is true,
+	  an array is returned. In both cases the elements are
 	  <a href="#ODBC::Column">ODBC::Column</a>s.
 	<dt><a name="columns2"><code>columns
 	  {|<var>col</var>| <var>block</var>}</code></a>
@@ -446,7 +459,7 @@ addcust.call("J.R. User", 9999)
 	<dd>Same as <code>fetch_many</code> except that all remaining rows
 	  are returned.
 	<dt><a name="fetch_hash">
-	    <code>fetch_hash(<var>with_table_names</var>)</code></a>
+	    <code>fetch_hash(<var>with_table_names=false</var>)</code></a>
 	<dd>Returns the next row of the query result as a hash keyed by
 	  column names. If <var>with_table_names</var> is true,
 	  the keys are combined table/column names.
@@ -454,7 +467,8 @@ addcust.call("J.R. User", 9999)
 	      <var>block</var>}</code></a>
 	<dd>Iterates over the query result, performing a <code>fetch</code>
 	  for each row.
-	<dt><a name="each_hash"><code>each_hash(<var>with_table_names</var>)
+	<dt><a name="each_hash">
+	    <code>each_hash(<var>with_table_names=false</var>)
 	      {|<var>row</var>| <var>block</var>}</code></a>
 	<dd>Iterates over the query result, performing a
 	  <code>fetch_hash</code> for each row.
@@ -534,6 +548,8 @@ addcust.call("J.R. User", 9999)
 	<dt><a name="date.to_s"><code>to_s</code></a>
         <dd>Returns a string representation of the object with format
 	  <code>YYYY-MM-DD</code>.
+	<dt><a name="date.clone"><code>clone</code></a>
+	<dd>Returns a fresh copy of the date object.
       </dl>
       <h3>singleton methods:</h3>
       <dl>
@@ -541,8 +557,14 @@ addcust.call("J.R. User", 9999)
 	      <var>day</var>])</code></a>
 	<dt><code>new(<var>date</var>)</code>
 	<dt><code>new(<var>time</var>)</code>
+	<dt><code>new(<var>string</var>)</code>
 	<dd>Creates a new date object from numeric values or from
-	  a <code>Date</code> or <code>Time</code> object.
+	  a <code>Date</code>, <code>Time</code>, or <code>String</code>
+	  object. Recognized string formats are eg
+	  <pre>2001-01-01
+2001-01-01 12:00:01
+{ts '2001-01-01 12:00:01.1'}
+{d '2001-01-01'}</pre>
       </dl>
     </div>
     <hr>
@@ -573,14 +595,22 @@ addcust.call("J.R. User", 9999)
 	<dt><a name="time.to_s"><code>to_s</code></a>
         <dd>Returns a string representation of the object with format
 	  <code>hh:mm:ss</code>.
+	<dt><a name="time.clone"><code>clone</code></a>
+	<dd>Returns a fresh copy of the time object.
       </dl>
       <h3>singleton methods:</h3>
       <dl>
 	<dt><a name="time.new"><code>new([<var>hour</var>, <var>minute</var>,
 	      <var>second</var>])</code></a>
 	<dt><code>new(<var>time</var>)</code>
+	<dt><code>new(<var>string</var>)</code>
 	<dd>Creates a new time object from numeric values or from
-	  a <code>Time</code> object.
+	  a <code>Time</code> or <code>String</code> object.
+	  Recognized string formats are eg
+	  <pre>12:00:01
+2001-01-01 12:00:01
+{ts '2001-01-01 12:00:01.1'}
+{t '12:00:01'}</pre>
       </dl>
     </div>
     <hr>
@@ -620,6 +650,8 @@ addcust.call("J.R. User", 9999)
 	<dt><a name="ts.to_s"><code>to_s</code></a>
         <dd>Returns a string representation of the object with format
 	  <code>YYYY-MM-DD hh:mm:ss fraction</code>.
+	<dt><a name="ts.clone"><code>clone</code></a>
+	<dd>Returns a fresh copy of the time stamp object.
       </dl>
       <h3>singleton methods:</h3>
       <dl>
@@ -627,8 +659,16 @@ addcust.call("J.R. User", 9999)
 	      <var>day</var>, <var>hour</var>, <var>minute</var>,
 	      <var>second</var>, <var>fraction</var>])</code></a>
 	<dt><code>new(<var>time</var>)</code>
+	<dt><code>new(<var>string</var>)</code>
 	<dd>Creates a new time stamp object from numeric values or from
-	  a <code>Time</code> object.
+	  a <code>Time</code> or <code>String</code> object.
+	  Recognized string formats are eg
+	  <pre>12:00:01
+2001-01-01
+2001-01-01 12:00:01
+{ts '2001-01-01 12:00:01.1'}
+{d '2001-01-01'}
+{t '12:00:01'}</pre>
       </dl>
     </div>
     <hr>
@@ -713,7 +753,20 @@ addcust.call("J.R. User", 9999)
       <hr>
       <h2><a name="ODBC::Error">ODBC::Error</a></h2>
       <P>
-	The class to represent ODBC related exceptions.
+	The class to represent ODBC related exceptions. The descriptive
+	string is made up of the first ODBC driver or driver manager
+	message as concatenation of SQL state, native error, driver manager
+	name, database name/vendor, DSN, and error text, eg <pre>
+S1000 (1146) [unixODBC][TCX][MySQL]Table 'test.foo' doesn't exist</pre>
+	For internally generated errors, eg method invocation on
+	a broken connection, the descriptive string starts with
+	'INTERN' and native error 0, eg <pre>
+INTERN (0) [RubyODBC]No connection</pre>
+	For errors programmatically generated by the
+	<a href="#ODBC::Object.raise"><code>raise</code></a> method,
+	the descriptive string starts with 'INTERN' and native error 1,
+	eg <pre>
+INTERN (1) [RubyODBC]Programmer forgot to RTFM</pre>
       </P>
       <h3>super class:</h3>
       <p>
@@ -737,12 +790,15 @@ addcust.call("J.R. User", 9999)
 	  </code><br>
 	<code>ODBC::del_dsn(<var>name</var>, <var>attrs</var>,
 	  <var>issys=false</var>)</code><br>
+	<code>ODBC::trace([<var>mask</var>])</code><br>
 	<br>
 	<code>ODBC::Statement.fetch!</code><br>
 	<code>ODBC::Statement.fetch_first!</code><br>
+	<code>ODBC::Statement.fetch_first_hash(<var>with_table_names=false</var>)
+	  </code><br>
 	<code>ODBC::Statement.fetch_scroll!(<var>direction</var>,
 	  <var>offset=1</var>)</code><br>
-	<code>ODBC::Statement.fetch_hash!(<var>with_table_names</var>)
+	<code>ODBC::Statement.fetch_hash!(<var>with_table_names=false</var>)
 	  </code><br>
       </P>
     <hr>
