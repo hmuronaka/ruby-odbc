@@ -27,7 +27,7 @@
   <body>
     <h1><a name="reference">Ruby ODBC Reference</a></h1>
     <div class = "lastmodifed">
-      Last update: Tue, 19 June 2001
+      Last update: Wed, 25 July 2001
     </div>
     <hr>
     <div>
@@ -44,7 +44,13 @@
         <dd>Returns an array of <a href="#ODBC::Driver">ODBC::Driver</a>s,
           ie all known ODBC drivers.
 	<dt><a name="ODBC::error"><code>error</code></a>
-        <dd>Returns the last error message (String) or nil.
+        <dd>Returns the last error messages (String array) or nil.
+	<dt><a name="ODBC::info"><code>info</code></a>
+	<dd>Returns the last driver/driver manager warning messages
+	  (String array) or nil.
+	<dt><a name="ODBC::raise"><code>raise(<var>value</var>)</code></a>
+        <dd>Raises an <a href="#ODBC::Error">ODBC::Error</a> exception with
+	  String error message <var>value</var>.
 	<dt><a name="ODBC::newenv"><code>newenv</code></a>
         <dd>Returns a new <a href="#ODBC::Environment">ODBC::Environment</a>.
 	<dt><a name="ODBC::connection_pooling">
@@ -156,14 +162,26 @@
       <dl>
 	<dt><a name="ODBC::Object.error"><code>error</code></a>
         <dd>Returns the last error message (String) or nil.
+        <dt><a name="ODBC::Object.info"><code>info</code></a>
+	<dd>Returns the last driver/driver manager warning messages
+	  (String array) or nil.
 	<dt><a name="ODBC::Object.raise"><code>raise(<var>value</var>)</code>
 	  </a>
-        <dd>Raises an <a href="#ODBC::Error">ODBC::Error</a> exception.
+        <dd>Raises an <a href="#ODBC::Error">ODBC::Error</a> exception with
+	  String error message <var>value</var>.
       </dl>
       <h3>singleton methods:</h3>
-      <dt><a name="ODBC::Object.error2"><code>error</code></a>
-	<dd>Returns the last error message (String) or nil.
-	</dl>
+      <dl>
+        <dt><a name="ODBC::Object.error2"><code>error</code></a>
+	<dd>Returns the last error message (String array) or nil.
+        <dt><a name="ODBC::Object.info2"><code>info</code></a>
+	<dd>Returns the last driver/driver manager warning messages
+	  (String array) or nil.
+	<dt><a name="ODBC::Object.raise2"><code>raise(<var>value</var>)</code>
+	  </a>
+        <dd>Raises an <a href="#ODBC::Error">ODBC::Error</a> exception with
+	  String error message <var>value</var>.
+      </dl>
     </div>
     <hr>
     <div>
@@ -177,7 +195,7 @@
       <h3>methods:</h3>
       <dl>
 	<dt><a name="ODBC::Environment.connect"><code>connect</code></a>
-        <dd>Connects to an ODBC data source and return a
+        <dd>Connects to an ODBC data source and returns a
 	  <a href="#ODBC::Database">ODBC::Database</a> object.
 	  Options are:
 	  <dl>
@@ -399,10 +417,14 @@ addcust.call("J.R. User", 9999)
 	<dt><a name="column"><code>column(<var>n</var>)</code></a>
 	<dd>Returns information of the n-th column of the query result
 	  as <a href="#ODBC::Column">ODBC::Column</a>.
-	<dt><a name="columns"><code>columns</code></a>
+	<dt><a name="columns1"><code>columns</code></a>
 	<dd>Returns a hash of column information keyed by column names
 	  (Strings) of the query result. The hash elements are
 	  <a href="#ODBC::Column">ODBC::Column</a>s.
+	<dt><a name="columns2"><code>columns
+	  {|<var>col</var>| <var>block</var>}</code></a>
+	<dd>Iterates over the columns of the query result with <var>col</var>
+          bound to each <a href="#ODBC::Column">ODBC::Column</a>.
 	<dt><a name="ncols"><code>ncols</code></a>
 	<dd>Returns the number of columns of the query result.
 	<dt><a name="nrows"><code>nrows</code></a>
@@ -698,6 +720,31 @@ addcust.call("J.R. User", 9999)
 	<code>StandardError</a></code>
       </p>
     </div>
+    <div>
+      <hr>
+      <h2>Undocumented</h2>
+      <h3>Use The Source, Luke!</h3>
+      <P>
+	<code>ODBC::add_dsn(<var>driver</var>, <var>issys=false</var>)
+	  </code><br>
+	<code>ODBC::add_dsn(<var>name</var>, <var>attrs</var>,
+	  <var>issys=false</var>)</code><br>
+	<code>ODBC::config_dsn(<var>driver</var>, <var>issys=false</var>)
+	  </code><br>
+	<code>ODBC::config_dsn(<var>name</var>, <var>attrs</var>,
+	  <var>issys=false</var>)</code><br>
+	<code>ODBC::del_dsn(<var>driver</var>, <var>issys=false</var>)
+	  </code><br>
+	<code>ODBC::del_dsn(<var>name</var>, <var>attrs</var>,
+	  <var>issys=false</var>)</code><br>
+	<br>
+	<code>ODBC::Statement.fetch!</code><br>
+	<code>ODBC::Statement.fetch_first!</code><br>
+	<code>ODBC::Statement.fetch_scroll!(<var>direction</var>,
+	  <var>offset=1</var>)</code><br>
+	<code>ODBC::Statement.fetch_hash!(<var>with_table_names</var>)
+	  </code><br>
+      </P>
     <hr>
     <address>
       mailto:<a href="mailto:chw@ch-werner.de">Christian Werner</a>

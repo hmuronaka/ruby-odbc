@@ -1,6 +1,16 @@
 ODBC binding for Ruby
 ---------------------
 
+Thu Jul 26 2001 version 0.8 released
+
+	* minor doc update
+	* added handling of block for ODBC::Statement.columns method
+	* revised error reporting and SQLRETURN handling with
+	  respect to SQL_SUCCESS_WITH_INFO, introduced info method
+	  to get warnings of last ODBC API call. Change was required
+	  to support MS SQL Server, thanks to correspondence with
+	  David Moore <david.moore@uk.dealogic.com>.
+
 Wed Jun 20 2001 version 0.7 released
 
 	* minor doc update
