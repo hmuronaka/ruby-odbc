@@ -6,7 +6,7 @@
  * and redistribution of this file and for a
  * DISCLAIMER OF ALL WARRANTIES.
  *
- * $Id: odbc.c,v 1.34 2004/07/14 06:56:10 chw Exp chw $
+ * $Id: odbc.c,v 1.35 2004/09/07 15:03:01 chw Exp chw $
  */
 
 #undef ODBCVER
@@ -3816,9 +3816,11 @@ do_fetch(STMT *q, int mode)
     }
     bufs = q->dbufs;
     if (bufs == NULL) {
-	int need = sizeof (char *) * q->ncols;
+	int need = sizeof (char *) * q->ncols, needp;
 	char *p;
 
+	need = LEN_ALIGN(need);
+	needp = need;
 	for (i = 0; i < q->ncols; i++) {
 	    if (q->coltypes[i].size != SQL_NO_TOTAL) {
 		need += LEN_ALIGN(q->coltypes[i].size);
@@ -3829,7 +3831,7 @@ do_fetch(STMT *q, int mode)
 	    rb_raise(Cerror, set_err("Out of memory"));
 	}
 	q->dbufs = bufs = (char **) p;
-	p += sizeof (char *) * q->ncols;
+	p += needp;
 	for (i = 0; i < q->ncols; i++) {
 	    int len = q->coltypes[i].size;
 
