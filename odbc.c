@@ -1,12 +1,13 @@
 /*
  * ODBC-Ruby binding
  * Copyright (c) 2001-2004 Christian Werner <chw@ch-werner.de>
+ * Portions copyright (c) 2004 Ryszard Niewisiewicz <micz@fibernet.pl>
  *
  * See the file "COPYING" for information on usage
  * and redistribution of this file and for a
  * DISCLAIMER OF ALL WARRANTIES.
  *
- * $Id: odbc.c,v 1.35 2004/09/07 15:03:01 chw Exp chw $
+ * $Id: odbc.c,v 1.37 2004/11/17 07:40:47 chw Exp chw $
  */
 
 #undef ODBCVER
@@ -816,6 +817,69 @@ get_err_or_info(SQLHENV henv, SQLHDBC hdbc, SQLHSTMT hstmt, int isinfo)
     return (v0 == Qnil) ? NULL : STR2CSTR(v0);
 }
 
+#ifdef HAVE_SQLINSTALLERERROR
+static char *
+get_installer_err()
+{
+#ifdef UNICODE
+    SQLWCHAR msg[SQL_MAX_MESSAGE_LENGTH];
+#else
+    char msg[SQL_MAX_MESSAGE_LENGTH];
+#endif
+    char buf[128];
+    SQLRETURN err;
+    SQLSMALLINT len;
+    VALUE v0 = Qnil, a = Qnil, v;
+    int done = 0;
+    WORD i;
+
+    for (i = 1; !done && i <= 8; i++) {
+	v = Qnil;
+	err = tracesql(SQL_HENV_NULL, SQL_HDBC_NULL, SQL_HSTMT_NULL,
+		       SQLInstallerError(i, &insterrcode, msg,
+					 SQL_MAX_MESSAGE_LENGTH, &len),
+		       "SQLInstallerError");
+	msg[SQL_MAX_MESSAGE_LENGTH - 1] = '\0';
+	switch (err) {
+	case SQL_SUCCESS:
+	case SQL_SUCCESS_WITH_INFO:
+	    sprintf(buf, "INSTALLER (%d) ", (int) insterrcode);
+	    v = rb_str_new2(buf);
+#ifdef UNICODE
+	    v = uc_str_cat(v, msg, len);
+#else
+	    v = rb_str_cat(v, msg, len);
+#endif
+	    break;
+	case SQL_NO_DATA:
+	    done = 1;
+	    break;
+	case SQL_ERROR:
+	    v = rb_str_new2("INTERN (0) [RubyODBC]");
+	    v = rb_str_cat2(v, "Error reading installer error message");
+	    done = 1;
+	    break;
+	default:
+	    v = rb_str_new2("INTERN (0) [RubyODBC]");
+	    sprintf(buf, "Unknown installer error %d", err);
+	    v = rb_str_cat2(v, buf);
+	    done = 1;
+	    break;
+	}
+	if (v != Qnil) {
+	    if (v0 == Qnil) {
+		v0 = v;
+		a = rb_ary_new();
+	    }
+	    rb_ary_push(a, rb_obj_taint(v));
+	    tracemsg(1, fprintf(stderr, "  | %s\n", STR2CSTR(v)););
+	}
+    }
+    CVAR_SET(Cobj, rb_intern("@@error"), a);
+    return (v0 == Qnil) ? NULL : STR2CSTR(v0);
+}
+#endif
+
 static char *
 get_err(SQLHENV henv, SQLHDBC hdbc, SQLHSTMT hstmt)
 {
@@ -1276,7 +1340,11 @@ conf_dsn(int argc, VALUE *argv, VALUE self, int op)
 	return Qnil;
     }
 #endif
+#ifdef HAVE_SQLINSTALLERERROR
+    rb_raise(Cerror, set_err(get_installer_err()));
+#else
     rb_raise(Cerror, set_err("DSN configuration error"));
+#endif
     return Qnil;
 }
 #endif
@@ -4659,6 +4727,7 @@ stmt_exec_int(int argc, VALUE *argv, VALUE self, int mode)
 	SQLSMALLINT ctype, stype;
 	SQLINTEGER vlen, rlen;
 	SQLUINTEGER coldef;
+	int retry = 1;
 
 	q->pinfo[i].tofree = 0;
 	switch (TYPE(argv[i])) {
@@ -4768,40 +4837,71 @@ stmt_exec_int(int argc, VALUE *argv, VALUE self, int mode)
 		break;
 	    }
 	}
+retry1:
 #ifdef UNICODE
-	if (callsql(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt,
-		    SQLBindParameter(q->hstmt, (SQLUSMALLINT) (i + 1),
-				     SQL_PARAM_INPUT,
-				     ctype, stype, coldef, q->pinfo[i].scale,
-				     (ctype == SQL_C_WCHAR) ?
-				     *(SQLWCHAR **) valp : valp,
-				     vlen, &q->pinfo[i].rlen),
-		    "SQLBindParameter(SQL_PARAM_INPUT)")
-	    == SQL_ERROR)
+	if (!succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt,
+		       SQLBindParameter(q->hstmt, (SQLUSMALLINT) (i + 1),
+					SQL_PARAM_INPUT,
+					ctype, stype, coldef,
+					q->pinfo[i].scale,
+					(ctype == SQL_C_WCHAR) ?
+					*(SQLWCHAR **) valp : valp,
+					vlen, &q->pinfo[i].rlen),
+		       &msg, "SQLBindParameter(SQL_PARAM_INPUT)"))
 #else
-	if (callsql(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt,
-		    SQLBindParameter(q->hstmt, (SQLUSMALLINT) (i + 1),
-				     SQL_PARAM_INPUT,
-				     ctype, stype, coldef, q->pinfo[i].scale,
-				     valp, vlen, &q->pinfo[i].rlen),
-		    "SQLBindParameter(SQL_PARAM_INPUT)")
-	    == SQL_ERROR)
+	if (!succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt,
+		       SQLBindParameter(q->hstmt, (SQLUSMALLINT) (i + 1),
+					SQL_PARAM_INPUT,
+					ctype, stype, coldef,
+					q->pinfo[i].scale,
+					valp, vlen, &q->pinfo[i].rlen),
+		       &msg, "SQLBindParameter(SQL_PARAM_INPUT)"))
 #endif
 	{
+	    if (retry) {
+		retry = 0;
+		if (stype == SQL_VARCHAR) {
+		    /* maybe MS Jet memo field */
+		    stype = SQL_LONGVARCHAR;
+		    goto retry1;
+		}
+#ifdef UNICODE
+		if (stype == SQL_WVARCHAR) {
+		    stype = SQL_WLONGVARCHAR;
+		    goto retry1;
+		}
+#endif
+	    }
 	    goto error;
 	}
     }
     for (; i < q->nump; i++) {
+	SQLSMALLINT stype = q->pinfo[i].type;
+	int retry = 1;
+
 	q->pinfo[i].tofree = 0;
 	q->pinfo[i].rlen = SQL_NULL_DATA;
-	if (callsql(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt,
-		    SQLBindParameter(q->hstmt, (SQLUSMALLINT) (i + 1),
-				     SQL_PARAM_INPUT, SQL_C_CHAR,
-				     q->pinfo[i].type,
-				     q->pinfo[i].coldef, q->pinfo[i].scale,
-				     NULL, 0, &q->pinfo[i].rlen),
-		    "SQLBindParameter(SQL_PARAM_INPUT)")
-	    == SQL_ERROR) {
+retry2:
+	if (!succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt,
+		       SQLBindParameter(q->hstmt, (SQLUSMALLINT) (i + 1),
+					SQL_PARAM_INPUT, SQL_C_CHAR, stype,
+					q->pinfo[i].coldef, q->pinfo[i].scale,
+					NULL, 0, &q->pinfo[i].rlen),
+		       &msg, "SQLBindParameter(SQL_PARAM_INPUT)")) {
+	    if (retry) {
+		retry = 0;
+		if (stype == SQL_VARCHAR) {
+		    /* maybe MS Jet memo field */
+		    stype = SQL_LONGVARCHAR;
+		    goto retry2;
+		}
+#ifdef UNICODE
+		if (stype == SQL_WVARCHAR) {
+		    stype = SQL_WLONGVARCHAR;
+		    goto retry2;
+		}
+#endif
+	    }
 	    goto error;
 	}
     }

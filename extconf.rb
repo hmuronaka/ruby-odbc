@@ -3,7 +3,7 @@ require 'mkmf'
 def have_library_ex(lib, func="main", headers=nil)
   checking_for "#{func}() in -l#{lib}" do
     libs = append_library($libs, lib)
-    if func && func != "" && COMMON_LIBS.include?(lib)
+    if !func.nil? && !func.empty? && COMMON_LIBS.include?(lib)
       true
     elsif try_func(func, libs, headers)
       $libs = libs
@@ -38,6 +38,7 @@ $have_odbcinst_h = have_header("odbcinst.h")
 if PLATFORM =~ /mswin32/ then
   if !have_library_ex("odbc32", "SQLAllocConnect", "sql.h") ||
   !have_library_ex("odbccp32", "SQLConfigDataSource", "odbcinst.h") ||
+  !have_library_ex("odbccp32", "SQLInstallerError", "odbcinst.h") ||
   !have_library("user32", "CharUpper") then
     puts "Can not locate odbc libraries"
     exit 1

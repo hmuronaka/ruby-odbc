@@ -1,6 +1,15 @@
 ODBC binding for Ruby
 ---------------------
 
+Sun Nov 21 2004 version 0.996 released
+
+	* use SQLInstallerError() for adddsn/confdsn/deldsn if available,
+	  code contributed by Ryszard Niewisiewicz
+	* retry SQLBindParameter() for SQL_VARCHAR when SQLDescribeParam()
+	  doesn't work (e.g. on MS Jet Engine)
+	* fixed crashes when SQLBindParameter failed in stmt_exec_int(),
+	  as reported by Ryszard Niewisiewicz
+
 Tue Sep 07 2004 version 0.995 released
 
 	* fixed another buffer alignment bug fetching doubles on sparc,
