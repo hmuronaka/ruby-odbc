@@ -1,22 +1,37 @@
 require 'mkmf'
 
+def have_library_ex(lib, func="main", headers=nil)
+  checking_for "#{func}() in -l#{lib}" do
+    libs = append_library($libs, lib)
+    if func && func != "" && COMMON_LIBS.include?(lib)
+      true
+    elsif try_func(func, libs, headers)
+      $libs = libs
+      true
+    else
+      false
+    end
+  end
+end
+ 
 dir_config("odbc")
 have_header("sql.h")
 have_header("sqlext.h")
 $have_odbcinst_h = have_header("odbcinst.h")
 
+if PLATFORM =~ /mswin32/ then
+  if !have_library_ex("odbc32", "SQLAllocConnect", "sql.h") ||
+  !have_library_ex("odbccp32", "SQLConfigDataSource", "odbcinst.h") ||
+  !have_library("user32", "CharUpper") then
+    puts "Can not locate odbc libraries"
+    exit 1
+  end
+  have_func("SQLConfigDataSourceW", "odbcinst.h")
 # mingw untested !!!
-if PLATFORM =~ /(mswin32|mingw|cygwin)/ then
+elsif PLATFORM =~ /(mingw|cygwin)/ then
   have_library("odbc32", "")
   have_library("odbccp32", "")
   have_library("user32", "")
-  if PLATFORM =~ /(mingw|cygwin)/ then
-    $have_odbcinst_h && 
-      $defs.push("-DHAVE_SQLCONFIGDATASOURCEW")
-  else
-    $have_odbcinst_h && 
-      have_func("SQLConfigDataSourceW", "odbcinst.h")
-  end
 else
   have_library("odbc", "SQLAllocConnect") ||
     have_library("iodbc", "SQLAllocConnect")

@@ -1,16 +1,16 @@
-# $Id: README,v 1.19 2003/05/21 13:28:09 chw Exp chw $
+# $Id: README,v 1.20 2003/12/26 12:54:40 chw Exp chw $
 
-ruby-odbc-0.99
+ruby-odbc-0.991
 
 This is an ODBC binding for Ruby. So far it has been tested with
 
-    - Ruby 1.6.[3-8], MySQL 3.22/MyODBC (local), unixODBC 2.1.0
+    - Ruby 1.[6-8], MySQL 3.22/MyODBC (local), unixODBC 2.1.0
       on Linux 2.2-x86
 
     - Ruby 1.6.4, MySQL 3.22/MyODBC (local), libiodbc 2.50
       on Linux 2.2-x86
 
-    - Ruby 1.6.[3-5], MySQL 3.22/MyODBC (remote), MS Jet Engine, MSVC++ 6.0
+    - Ruby 1.[6-8], MySQL 3.22/MyODBC (remote), MS Jet Engine, MSVC++ 6.0
       on Windows NT4SP6
 
     - Ruby 1.6.[3-5], MySQL 3.22/MyODBC (remote), MS Jet Engine, cygwin,
@@ -36,6 +36,16 @@ Installation of utf8 version:
     $ ruby -Cutf8 extconf.rb
     $ make -C utf8
     # make -C utf8 install
+
+Installation MSVC:
+
+    C:..>ruby extconf.rb
+    C:..>nmake
+    C:..>nmake install
+    C:..>cd utf8
+    C:..>ruby extconf.rb
+    C:..>nmake
+    C:..>nmake install
 
 Testing:
 

@@ -1,6 +1,18 @@
 ODBC binding for Ruby
 ---------------------
 
+Fri Dec 26 2003 version 0.991 released
+
+	* use SQLConfigDataSourceW() in utf8 version
+	* SQLError() is now always called after error/warning from
+	  other ODBC API invokations in order to cleanup error
+	  messages in driver manager/driver
+	* tweaks for SQLColAttributes() problems as suggested
+	  by Nathaniel Talbott <nathaniel@talbott.ws>
+	* modified extconf.rb as suggestedb by <RNicz@fibernet.pl>
+	* eliminated use of alloca() in utf8 converters
+	* reworked to use Ruby 1.8 rb_define_alloc_func() API
+
 Wed May 21 2003 version 0.99 released
 
 	* no functional changes with respect to 0.98
