@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * $Id: odbc.c,v 1.8 2001/06/10 07:38:12 chw Exp chw $
+ * $Id: odbc.c,v 1.9 2001/06/12 05:14:33 chw Exp chw $
  */
 
 #ifdef _WIN32
@@ -51,14 +51,27 @@ typedef struct {
     SQLHDBC hdbc;
 } DBC;
 
+typedef struct {
+    SQLSMALLINT type;
+    SQLUINTEGER coldef;
+    SQLSMALLINT scale;
+    SQLSMALLINT nullable;
+    char buffer[32];
+} PINFO;
+
+typedef struct {
+    int type;
+    int size;
+} COLTYPE;
+
 typedef struct stmt {
     VALUE self;
     VALUE dbc;
     SQLHSTMT hstmt;
     int nump;
-    int *pinfo;
+    PINFO *pinfo;
     int ncols;
-    int *coltypes;
+    COLTYPE *coltypes;
     char **colnames;
     char **dbufs;
 } STMT;
@@ -578,11 +591,8 @@ conf_dsn(int argc, VALUE *argv, VALUE self, int op)
 	drv = x;
 	attr = a;
     }
-    if (issys != Qnil && issys != Qtrue && issys != Qfalse) {
-	rb_raise(rb_eTypeError, "expecting boolean argument");
-    }
     Check_Type(drv, T_STRING);
-    if (issys == Qtrue) {
+    if (RTEST(issys)) {
 	switch (op) {
 	case ODBC_ADD_DSN:	op = ODBC_ADD_SYS_DSN; break;
 	case ODBC_CONFIG_DSN:	op = ODBC_CONFIG_SYS_DSN; break;
@@ -727,8 +737,8 @@ dbc_connect(int argc, VALUE *argv, VALUE self)
     if (SQLAllocConnect(e->henv, &dbc) != SQL_SUCCESS) {
 	rb_raise(Cerror, get_err(e->henv, NULL, NULL));
     }
-    if (SQLConnect(dbc, (UCHAR *) sdsn, SQL_NTS, (UCHAR *) suser, SQL_NTS,
-		   (UCHAR *) spasswd, SQL_NTS) != SQL_SUCCESS) {
+    if (SQLConnect(dbc, (SQLCHAR *) sdsn, SQL_NTS, (SQLCHAR *) suser, SQL_NTS,
+		   (SQLCHAR *) spasswd, SQL_NTS) != SQL_SUCCESS) {
 	char *msg = get_err(e->henv, dbc, NULL);
 
 	SQLFreeConnect(dbc);
@@ -775,7 +785,7 @@ dbc_drvconnect(VALUE self, VALUE drv)
     if (SQLAllocConnect(e->henv, &dbc) != SQL_SUCCESS) {
 	rb_raise(Cerror, get_err(e->henv, NULL, NULL));
     }
-    if (SQLDriverConnect(dbc, NULL, (UCHAR *) sdrv, SQL_NTS,
+    if (SQLDriverConnect(dbc, NULL, (SQLCHAR *) sdrv, SQL_NTS,
 			 NULL, 0, NULL, SQL_DRIVER_NOPROMPT) != SQL_SUCCESS) {
 	char *msg = get_err(e->henv, dbc, NULL);
 
@@ -860,10 +870,11 @@ dbc_disconnect(VALUE self)
  *----------------------------------------------------------------------
  */
 
-static int *
+static COLTYPE *
 make_coltypes(SQLHSTMT hstmt, int ncols)
 {
-    int i, *ret = NULL;
+    int i;
+    COLTYPE *ret = NULL;
     SQLINTEGER type, size;
     
     for (i = 0; i < ncols; i++) {
@@ -877,7 +888,7 @@ make_coltypes(SQLHSTMT hstmt, int ncols)
 	    return ret;
 	}
     }
-    ret = ALLOC_N(int, ncols * 2);
+    ret = ALLOC_N(COLTYPE, ncols);
     if (ret == NULL) {
 	return NULL;
     }
@@ -932,8 +943,8 @@ make_coltypes(SQLHSTMT hstmt, int ncols)
 	    }
 	    break;
 	}
-	ret[i] = type;
-	ret[i + ncols] = size;
+	ret[i].type = type;
+	ret[i].size = size;
     }
     return ret;
 }
@@ -946,33 +957,25 @@ make_coltypes(SQLHSTMT hstmt, int ncols)
  *----------------------------------------------------------------------
  */
 
-static int *
+static PINFO *
 make_pinfo(SQLHSTMT hstmt, int nump)
 {
-    int i, *pinfo = NULL;
+    int i;
+    PINFO *pinfo = NULL;
 
-    pinfo = ALLOC_N(int, nump * 4);
+    pinfo = ALLOC_N(PINFO, nump);
     if (pinfo == NULL) {
 	return NULL;
     }
     for (i = 0; i < nump; i++) {
-	SQLSMALLINT type, scale, nullable;
-	SQLUINTEGER col;
-
-	switch (SQLDescribeParam(hstmt, (SQLUSMALLINT) (i + 1), &type,
-				 &col, &scale, &nullable)) {
-	case SQL_SUCCESS:
-	    pinfo[i * 4 + 0] = type;
-	    pinfo[i * 4 + 1] = col;
-	    pinfo[i * 4 + 2] = scale;
-	    pinfo[i * 4 + 3] = nullable;
-	    break;
-	default:
-	    pinfo[i * 4 + 0] = SQL_VARCHAR;
-	    pinfo[i * 4 + 1] = 0;
-	    pinfo[i * 4 + 2] = 0;
-	    pinfo[i * 4 + 3] = SQL_NULLABLE_UNKNOWN;
-	    break;
+	if (SQLDescribeParam(hstmt, (SQLUSMALLINT) (i + 1),
+				 &pinfo[i].type, &pinfo[i].coldef,
+				 &pinfo[i].scale, &pinfo[i].nullable)
+	    != SQL_SUCCESS) {
+	    pinfo[i].type = SQL_VARCHAR;
+	    pinfo[i].coldef = 0;
+	    pinfo[i].scale = 0;
+	    pinfo[i].nullable = SQL_NULLABLE_UNKNOWN;
 	}
     }
     return pinfo;
@@ -992,7 +995,8 @@ make_result(VALUE dbc, SQLHSTMT hstmt, VALUE result, int mode)
     DBC *p;
     STMT *q;
     SQLSMALLINT cols = 0, nump;
-    int *pinfo = NULL, *coltypes = NULL;
+    COLTYPE *coltypes = NULL;
+    PINFO *pinfo = NULL;
     char *msg;
 
     Data_Get_Struct(dbc, DBC, p);
@@ -1018,7 +1022,8 @@ make_result(VALUE dbc, SQLHSTMT hstmt, VALUE result, int mode)
     if (result == Qnil) {
 	result = Data_Make_Struct(Cstmt, STMT, mark_stmt, free_stmt, q);
 	q->self = result;
-	q->pinfo = q->coltypes = NULL;
+	q->pinfo = NULL;
+	q->coltypes = NULL;
 	q->colnames = q->dbufs = NULL;
 	rb_hash_aset(p->stmts, q->self, q->self);
     } else {
@@ -1475,17 +1480,17 @@ do_option(int argc, VALUE *argv, VALUE self, int op)
     }
     switch (op) {
     case SQL_AUTOCOMMIT:
+	if (val == Qnil) {
+	    return v ? Qtrue : Qfalse;
+	}
+	v = RTEST(val) ? SQL_AUTOCOMMIT_ON : SQL_AUTOCOMMIT_OFF;
+	break;
+
     case SQL_NOSCAN:
 	if (val == Qnil) {
 	    return v ? Qtrue : Qfalse;
 	}
-	if (val == Qtrue) {
-	    v = 1;
-	} else if (val == Qfalse) {
-	    v = 0;
-	} else {
-	    rb_raise(rb_eTypeError, "expecting boolean argument");
-	}
+	v = RTEST(val) ? SQL_NOSCAN_ON : SQL_NOSCAN_OFF;
 	break;
 
     case SQL_CONCURRENCY:
@@ -2357,10 +2362,8 @@ do_fetch(STMT *q, int mode)
 	char *p;
 
 	for (i = 0; i < q->ncols; i++) {
-	    int len = q->coltypes[i + q->ncols];
-
-	    if (len != SQL_NO_TOTAL) {
-		need += len;
+	    if (q->coltypes[i].size != SQL_NO_TOTAL) {
+		need += q->coltypes[i].size;
 	    }
 	}
 	p = ALLOC_N(char, need);
@@ -2370,7 +2373,7 @@ do_fetch(STMT *q, int mode)
 	q->dbufs = bufs = (char **) p;
 	p += sizeof (char *) * q->ncols;
 	for (i = 0; i < q->ncols; i++) {
-	    int len = q->coltypes[i + q->ncols];
+	    int len = q->coltypes[i].size;
 
 	    if (len == SQL_NO_TOTAL) {
 		bufs[i] = NULL;
@@ -2433,12 +2436,12 @@ do_fetch(STMT *q, int mode)
     }
     for (i = 0; i < q->ncols; i++) {
 	SQLINTEGER curlen;
-	SQLSMALLINT type = q->coltypes[i];
+	SQLSMALLINT type = q->coltypes[i].type;
 	VALUE v;
 	char *valp, *freep = NULL;
 	SQLINTEGER totlen;
 
-	curlen = q->coltypes[i + q->ncols];
+	curlen = q->coltypes[i].size;
 	if (curlen == SQL_NO_TOTAL) {
 
 	    totlen = 0;
@@ -2491,7 +2494,7 @@ do_fetch(STMT *q, int mode)
 	} else {
 	    switch (type) {
 	    case SQL_C_LONG:
-		v = INT2NUM(*((int *) valp));
+		v = INT2NUM(*((long *) valp));
 		break;
 	    case SQL_C_DOUBLE:
 		v = rb_float_new(*((double *) valp));
@@ -2622,13 +2625,7 @@ stmt_hash_mode(int argc, VALUE *argv, VALUE self)
     VALUE withtab = Qnil;
 
     rb_scan_args(argc, argv, "01", &withtab);
-    if (withtab == Qnil) {
-	withtab = Qfalse;
-    }
-    if (withtab != Qtrue && withtab != Qfalse) {
-	rb_raise(rb_eTypeError, "expecting boolean argument");
-    }
-    return withtab == Qtrue ? DOFETCH_HASH2 : DOFETCH_HASH;
+    return RTEST(withtab) ? DOFETCH_HASH2 : DOFETCH_HASH;
 }
 
 static VALUE
@@ -2798,9 +2795,8 @@ stmt_exec_int(int argc, VALUE *argv, VALUE self, int mode)
     }
     SQLFreeStmt(q->hstmt, SQL_RESET_PARAMS);
     for (i = 0; i < argc; i++) {
-	char buf[32];
-	SQLPOINTER valp = (SQLPOINTER) buf;
-	SQLSMALLINT ctype;
+	SQLPOINTER valp = (SQLPOINTER) &q->pinfo[i].buffer;
+	SQLSMALLINT ctype, stype;
 	SQLINTEGER vlen, rlen;
 	SQLUINTEGER coldef;
 
@@ -2813,9 +2809,9 @@ stmt_exec_int(int argc, VALUE *argv, VALUE self, int mode)
 	    break;
 	case T_FIXNUM:
 	    ctype = SQL_C_LONG;
-	    *(int *) valp = FIX2INT(argv[i]);
+	    *(long *) valp = FIX2INT(argv[i]);
 	    rlen = 1;
-	    vlen = sizeof (int);
+	    vlen = sizeof (long);
 	    break;
 	case T_FLOAT:
 	    ctype = SQL_C_DOUBLE;
@@ -2866,13 +2862,35 @@ stmt_exec_int(int argc, VALUE *argv, VALUE self, int mode)
 	    vlen = rlen + 1;
 	    break;
 	}
-	coldef = q->pinfo[i * 4 + 1];
+	stype = q->pinfo[i].type;
+	coldef = q->pinfo[i].coldef;
 	if (coldef == 0) {
-	    coldef = vlen;
+	    switch (ctype) {
+	    case SQL_C_LONG:
+		coldef = 10;
+		break;
+	    case SQL_C_DOUBLE:
+		coldef = 15;
+		if (stype == SQL_VARCHAR) {
+		    stype = SQL_DOUBLE;
+		}
+		break;
+	    case SQL_C_DATE:
+		coldef = 10;
+		break;
+	    case SQL_C_TIME:
+		coldef = 8;
+		break;
+	    case SQL_C_TIMESTAMP:
+		coldef = 19;
+		break;
+	    default:
+		coldef = vlen;
+		break;
+	    }
 	}
 	if (SQLBindParameter(q->hstmt, (SQLUSMALLINT) (i + 1), SQL_PARAM_INPUT,
-			     ctype, (SQLSMALLINT) q->pinfo[i * 4 + 0],
-			     coldef, (SQLSMALLINT) q->pinfo[i * 4 + 2],
+			     ctype, stype, coldef, q->pinfo[i].scale,
 			     valp, vlen, &rlen) == SQL_ERROR) {
 	    goto error;
 	}
@@ -2881,9 +2899,8 @@ stmt_exec_int(int argc, VALUE *argv, VALUE self, int mode)
 	SQLINTEGER isnull = SQL_NULL_DATA;
 
 	if (SQLBindParameter(q->hstmt, (SQLUSMALLINT) (i + 1), SQL_PARAM_INPUT,
-			     SQL_C_CHAR, (SQLSMALLINT) q->pinfo[i * 4 + 0],
-			     (SQLUINTEGER) q->pinfo[i * 4 + 1],
-			     (SQLSMALLINT) q->pinfo[i * 4 + 2],
+			     SQL_C_CHAR, q->pinfo[i].type,
+			     q->pinfo[i].coldef, q->pinfo[i].scale,
 			     NULL, 0, &isnull) == SQL_ERROR) {
 	    goto error;
 	}

@@ -1,6 +1,6 @@
-# $Id: README,v 1.5 2001/06/10 07:31:34 chw Exp chw $
+# $Id: README,v 1.6 2001/06/12 05:15:27 chw Exp chw $
 
-ruby-odbc-0.5
+ruby-odbc-0.6
 
 This is an ODBC binding for Ruby. So far it has been tested with
 
@@ -10,7 +10,8 @@ This is an ODBC binding for Ruby. So far it has been tested with
     - Ruby 1.6.3, MySQL 3.22/MyODBC (remote), MS Jet Engine, MSVC++ 6.0
       on Windows NT4SP6
 
-    Michael Neumann <neumann@s-direktnet.de> reported successful compilation
+    Michael Neumann <neumann@s-direktnet.de> and
+    Will Merrell <wmerrell@catalystcorp.com> reported successful compilation
     with Cygwin on Win32.
 
 Requirements:

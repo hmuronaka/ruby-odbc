@@ -1,6 +1,13 @@
 ODBC binding for Ruby
 ---------------------
 
+Tue Jun 12 2001 version 0.6 released
+
+	* reviewed parameter and column information handling
+	* work around cases when SQLDescribeParam is not supported
+	  by the selected ODBC driver
+	* bug fixes in parameter binding
+
 Sun Jun 10 2001 version 0.5 released
 
 	* doc updated
