@@ -1,6 +1,11 @@
 ODBC binding for Ruby
 ---------------------
 
+Wed May 21 2003 version 0.99 released
+
+	* no functional changes with respect to 0.98
+	  but starting with 0.99 released under Ruby style license.
+
 Thu May 08 2003 version 0.98 released
 
 	* added utf8 version (-DUNICODE, -D_UNICODE for CFLAGS),
