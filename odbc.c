@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * $Id: odbc.c,v 1.23 2003/03/15 13:00:41 chw Exp chw $
+ * $Id: odbc.c,v 1.24 2003/04/25 09:58:23 chw Exp chw $
  */
 
 #undef ODBCVER
@@ -88,7 +88,7 @@ typedef struct {
     SQLSMALLINT scale;
     SQLINTEGER rlen;
     SQLSMALLINT nullable;
-    char buffer[32];
+    char buffer[sizeof (double) * 4];
 } PINFO;
 
 typedef struct {
@@ -178,6 +178,13 @@ static VALUE stmt_each(VALUE self);
 static VALUE stmt_each_hash(int argc, VALUE *argv, VALUE self);
 static VALUE stmt_close(VALUE self);
 static VALUE stmt_drop(VALUE self);
+
+/*
+ * Macro to align buffers.
+ */
+
+#define LEN_ALIGN(x) \
+    ((x) + sizeof (double) - (((x) + sizeof (double)) % sizeof (double)))
 
 
 /*
@@ -3133,7 +3140,7 @@ do_fetch(STMT *q, int mode)
 
 	for (i = 0; i < q->ncols; i++) {
 	    if (q->coltypes[i].size != SQL_NO_TOTAL) {
-		need += q->coltypes[i].size;
+		need += LEN_ALIGN(q->coltypes[i].size);
 	    }
 	}
 	p = ALLOC_N(char, need);
@@ -3149,7 +3156,7 @@ do_fetch(STMT *q, int mode)
 		bufs[i] = NULL;
 	    } else {
 		bufs[i] = p;
-		p += len;
+		p += LEN_ALIGN(len);
 	    }
 	}
     }

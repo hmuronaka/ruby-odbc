@@ -1,6 +1,12 @@
 ODBC binding for Ruby
 ---------------------
 
+Fri Apr 25 2003 version 0.97 released
+
+	* align buffers for fetching scalar data (long, double et.al.)
+	  to prevent alignment problems causing bus errors e.g. on sparc,
+	  thanks sakazuki <QZS01353@nifty.ne.jp> for testing.
+
 Wed Mar 19 2003 version 0.96 released
 
 	* added fall back to SQLFetch() when SQLFetchScrol(SQL_FETCH_NEXT)
