@@ -27,7 +27,7 @@
 <body>
   <h1><a name="reference">Ruby ODBC Reference</a></h1>
   <div class = "lastmodifed">
-    Last update: Sun, 13 May 2001
+    Last update: Thu, 17 May 2001
   </div>
   <hr>
   <div>
@@ -68,8 +68,9 @@ and/or driver is raised.
       <dt><a name="ODBC.drivers"><code>drivers</code></a>
         <dd>Returns an array of <a href="#ODBCDriver">ODBCDrivers</a>, ie all
           known ODBC drivers.
+      <dt><a name="ODBC.error"><code>error</code></a>
+        <dd>Returns the last error message (String) or nil.
     </dl>
-
     <h3>methods:</h3>
      <dl>
        <dt><a name="connect"><code>connect(<var>dsn</var>,
@@ -108,6 +109,52 @@ and/or driver is raised.
        <dt><a name="prepare"><code>prepare(<var>sql</var>)</code></a>
          <dd>Prepares the query specified by <var>sql</var> and returns
             an <a href="#ODBCStmt">ODBCStmt</a>.
+       <dt><a name="autocommit"><code>autocommit([<var>bool</var>])</code></a>
+         <dd>Sets or queries the autocommit option of the connection.
+       <dt><a name="concurrency"><code>concurrency([<var>intval</var>])</code></a>
+         <dd>Sets or queries the concurrency mode of the connection.
+       <dt><a name="maxrows"><code>maxrows([<var>intval</var>])</code></a>
+         <dd>Sets or queries the maximum rows for the connection.
+       <dt><a name="timeout"><code>timeout([<var>intval</var>])</code></a>
+         <dd>Sets or queries the timeout value of the connection.
+       <dt><a name="maxlength"><code>maxlength([<var>intval</var>])</code></a>
+         <dd>Sets or queries the maximum length for the connection.
+       <dt><a name="rowsetsize"><code>rowsetsize([<var>intval</var>])</code></a>
+         <dd>Sets or queries the row set size option of the connection.
+       <dt><a name="cursortype"><code>cursortype([<var>intval</var>])</code></a>
+         <dd>Sets or queries the cursor behaviour of the connection.
+       <dt><a name="noscan"><code>noscan([<var>bool</var>])</code></a>
+         <dd>Sets or queries the noscan option of the connection.
+     </dl>
+    <h3>constants:</h3>
+     <P>
+     Some constants of the ODBC API are defined in order to set connection
+     options and to
+     deal with SQL data types:
+     </P>
+     <dl>
+     <dt>Cursor behaviour:
+       <dd><var>SQL_CURSOR_FORWARD_ONLY</var>,
+           <var>SQL_CURSOR_KEYSET_DRIVEN</var>,
+           <var>SQL_CURSOR_DYNAMIC</var>,
+           <var>SQL_CURSOR_STATIC</var>
+     <dt>Concurrency (transactions):
+       <dd><var>SQL_CONCUR_READ_ONLY</var>,
+           <var>SQL_CONCUR_LOCK</var>,
+           <var>SQL_CONCUR_ROWVER</var>,
+           <var>SQL_CONCUR_VALUES</var>
+     <dt>Data types:
+       <dd><var>SQL_UNKNOWN_TYPE</var>,
+           <var>SQL_CHAR</var>,
+           <var>SQL_NUMERIC</var>,
+           <var>SQL_DECIMAL</var>,
+           <var>SQL_INTEGER</var>,
+           <var>SQL_SMALLINT</var>,
+           <var>SQL_FLOAT</var>,
+           <var>SQL_REAL</var>,
+           <var>SQL_DOUBLE</var>,
+           <var>SQL_VARCHAR</var>,
+           <var>SQL_DATETIME</var>
      </dl>
    </div>
    <hr>
@@ -135,19 +182,24 @@ ODBC to Ruby type mapping:
      <p>
        <code>Object</code>
      </p>
-     <h2>methods:</h2>
+     <h3>methods:</h3>
      <dl>
        <dt><a name="close"><code>close</code></a>
          <dd>Closes the <a href="#ODBCStmt">ODBCStmt</a>.
        <dt><a name="drop"><code>drop</code></a>
          <dd>Closes and frees the <a href="#ODBCStmt">ODBCStmt</a>.
+       <dt><a name="column"><code>column(<var>n</var>)</code></a>
+         <dd>Returns information of the n-th column of the query result
+             as <a href="#ODBCColumn">ODBCColumn</a>.
        <dt><a name="columns"><code>columns</code></a>
-         <dd>Returns the array of column names (Strings) of the query result.
+         <dd>Returns a hash of column information keyed by column names
+             (Strings) of the query result. The hash elements are
+             <a href="#ODBCColumn">ODBCColumns</a>.
        <dt><a name="ncols"><code>ncols</code></a>
          <dd>Returns the number of columns of the query result.
        <dt><a name="nrows"><code>nrows</code></a>
          <dd>Returns the number of rows of the query result.
-       <dt><a name="fetch"><code>fetch(<var>index</var>)</code></a>
+       <dt><a name="fetch"><code>fetch</code></a>
          <dd>Returns the next row of the query result as an array.
        <dt><a name="fetch_first"><code>fetch_first</code></a>
          <dd>Returns the first row of the query result as an array.
@@ -155,9 +207,14 @@ ODBC to Ruby type mapping:
          <dd>Returns the last row of the query result as an array.
        <dt><a name="fetch_prior"><code>fetch_prior</code></a>
          <dd>Returns the previous row of the query result as an array.
+       <dt><a name="fetch_hash"><code>fetch_hash(<var>with_table_names</var>)</code></a>
+         <dd>Returns the next row of the query result as a hash keyed by column names. If <var>with_table_names</var> is true, the keys are combined table/column names.
        <dt><a name="each"><code>each</code></a>
 	 <dd>Iterates over the query result, performing a <code>fetch</code>
              for each row.
+       <dt><a name="each_hash"><code>each_hash(<var>with_table_names</var>)</code></a>
+	 <dd>Iterates over the query result, performing a
+             <code>fetch_hash</code> for each row.
        <dt><a name="prepare"><code>prepare(<var>sql</var>)</code></a>
          <dd>Closes the current query and prepares it again from the
              specified <var>sql</var> clause.
@@ -167,23 +224,60 @@ ODBC to Ruby type mapping:
   </div>
   <hr>
   <div>
+  <h2><a name="ODBCColumn">ODBCColumn</a></h2>
+     <P>
+The class to represent information of a column of a query.
+Objects of this class are created as result of the <code>column</code>
+and <code>columns</code> methods of <a href="#ODBCStmt">ODBCStmt</a>.
+     </P>
+     <h3>super class:</h3>
+     <p>
+       <code>Object</code>
+     </p>
+     <h3>methods:</h3>
+     <dl>
+       <dt><code>name</code></a>
+         <dd>Returns the column name (String).
+       <dt><code>table</code></a>
+         <dd>Returns the table name (String).
+       <dt><code>length</code></a>
+         <dd>Returns the length of the column (Integer).
+       <dt><code>nullable</code></a>
+         <dd>Returns the nullable state of the column (Boolean).
+       <dt><code>searchable</code></a>
+         <dd>Returns the searchable state of the column (Boolean).
+       <dt><code>unsigned</code></a>
+         <dd>Returns the unsigned flag of the column (Boolean).
+       <dt><code>precision</code></a>
+         <dd>Returns the precision of the column (Integer).
+       <dt><code>scale</code></a>
+         <dd>Returns the scale of the column (Integer).
+       <dt><code>type</code></a>
+         <dd>Returns the SQL type of the column (Integer).
+     </dl>
+  </div>
+  <hr>
+  <div>
   <h2><a name="ODBCDSN">ODBCDSN</a></h2>
      <P>
-The class to represent a data source name. The object of this class is
-created as the result of a <a href="#ODBC.datasources">ODBC.datasources</a>
+The class to represent a data source name. Objects of this class are
+created as result of a <a href="#ODBC.datasources">ODBC.datasources</a>
 class method call.
      </P>
      <h3>super class:</h3>
      <p>
        <code>Object</code>
      </p>
-     <h2>methods:</h2>
-     <dl>
+     <h3>class methods:</h3>
        <dt><a name="ODBCDSN.new"><code>new</code></a>
          <dd>Returns an empty <a href="#ODBCDSN">ODBCDSN</a> object.
-       <dt><a name="ODBCDSN.name"><code>name[=<var>name</var>]</code></a>
+     <dl>
+     </dl>
+     <h3>methods:</h3>
+     <dl>
+       <dt><code>name[=<var>name</var>]</code></a>
          <dd>Queries or sets the <var>name</var> (String) of the data source.
-       <dt><a name="ODBCDSN.descr"><code>descr[=<var>descr</var>]</code></a>
+       <dt><code>descr[=<var>descr</var>]</code></a>
          <dd>Queries or sets the <var>descr</var> (description, String)
 	     of the data source.
     </dl>
@@ -192,21 +286,24 @@ class method call.
   <h2><a name="ODBCDriver">ODBCDriver</a></h2>
      <P>
 The class to represent an ODBC driver name with attributes.
-The object of this class is
-created as the result of a <a href="#ODBC.drivers">ODBC.drivers</a>
+Objects of this class are
+created as result of a <a href="#ODBC.drivers">ODBC.drivers</a>
 class method call.
      </P>
      <h3>super class:</h3>
      <p>
        <code>Object</code>
      </p>
-     <h2>methods:</h2>
+     <h3>class methods:</h3>
      <dl>
        <dt><a name="ODBCDriver.new"><code>new</code></a>
          <dd>Returns an empty <a href="#ODBCDriver">ODBCDriver</a> object.
-       <dt><a name="ODBCDriver.name"><code>name[=<var>name</var>]</code></a>
+     </dl>
+     <h3>methods:</h3>
+     <dl>
+       <dt><code>name[=<var>name</var>]</code></a>
          <dd>Queries or sets the <var>name</var> (String) of the ODBC driver.
-       <dt><a name="ODBCDSN.attrs"><code>attrs[[<var>key</var>][=<var>value</var>]]</code></a>
+       <dt><code>attrs[[<var>key</var>][=<var>value</var>]]</code></a>
          <dd>Queries or sets attributes in the <var>attrs</var> Hash of the
 	     ODBC driver. The <var>key</var>s and <var>value</var>s should be
 	     Strings.

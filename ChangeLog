@@ -1,6 +1,14 @@
 ODBC binding for Ruby
 ---------------------
 
+Thu May 17 2001 version 0.2 released
+
+	* updated and improved doc
+	* added fetch_hash, each_hash, column ODBCStmt methods
+	* added more constants in ODBC class
+	* added ODBCColumn class
+	* added accessor for ODBC::error
+
 Sun May 13 2001 version 0.1 released
 
 	* initial release.
