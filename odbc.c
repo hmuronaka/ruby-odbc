@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * $Id: odbc.c,v 1.18 2001/08/31 03:54:09 chw Exp chw $
+ * $Id: odbc.c,v 1.19 2001/09/07 05:46:53 chw Exp chw $
  */
 
 #undef ODBCVER
@@ -181,7 +181,7 @@ static VALUE stmt_drop(VALUE self);
 /*
  *----------------------------------------------------------------------
  *
- *      Constructor for ODBCDSN
+ *      Things for ODBC::DSN
  *
  *----------------------------------------------------------------------
  */
@@ -206,7 +206,7 @@ dsn_init(VALUE self)
 /*
  *----------------------------------------------------------------------
  *
- *      Constructor for ODBCDriver
+ *      Things for ODBC::Driver
  *
  *----------------------------------------------------------------------
  */
@@ -632,17 +632,23 @@ succeeded(SQLHENV henv, SQLHDBC hdbc, SQLHSTMT hstmt, SQLRETURN ret,
 static VALUE
 env_of(VALUE self)
 {
-    if (CLASS_OF(self) == Cstmt) {
+    if (rb_obj_is_kind_of(self, Cstmt) == Qtrue) {
 	STMT *q;
 
 	Data_Get_Struct(self, STMT, q);
 	self = q->dbc;
+	if (self == Qnil) {
+	    rb_raise(Cerror, set_err("Stale ODBC::Statement"));
+	}
     }
-    if (CLASS_OF(self) == Cdbc) {
+    if (rb_obj_is_kind_of(self, Cdbc) == Qtrue) {
 	DBC *p;
 
 	Data_Get_Struct(self, DBC, p);
 	self = p->env;
+	if (self == Qnil) {
+	    rb_raise(Cerror, set_err("Stale ODBC::Database"));
+	}
     }
     return self;
 }
@@ -669,11 +675,14 @@ get_dbc(VALUE self)
 {
     DBC *p;
 
-    if (CLASS_OF(self) == Cstmt) {
+    if (rb_obj_is_kind_of(self, Cstmt) == Qtrue) {
 	STMT *q;
 
 	Data_Get_Struct(self, STMT, q);
 	self = q->dbc;
+	if (self == Qnil) {
+	    rb_raise(Cerror, set_err("Stale ODBC::Statement"));
+	}
     }
     Data_Get_Struct(self, DBC, p);
     return p;
@@ -980,7 +989,7 @@ dbc_new(int argc, VALUE *argv, VALUE self)
     p->envp = NULL;
     list_init(&p->stmts, offsetof(STMT, link));
     p->hdbc = SQL_NULL_HDBC;
-    p->upc = 1;
+    p->upc = 0;
     if (env != Qnil) {
 	ENV *e;
 
@@ -1050,12 +1059,6 @@ dbc_connect(int argc, VALUE *argv, VALUE self)
 	tracesql(SQL_NULL_HENV, dbc, SQL_NULL_HSTMT,
 		 SQLFreeConnect(dbc), "SQLFreeConnect");
 	rb_raise(Cerror, "%s", msg);
-    }
-    if (SQL_SUCCEEDED(tracesql(SQL_NULL_HENV, dbc, SQL_NULL_HSTMT,
-			       SQLGetInfo(dbc, SQL_IDENTIFIER_CASE, &ic,
-					  sizeof (ic), &iclen),
-			       "SQLGetInfo"))) {
-	p->upc = ic != SQL_IC_SENSITIVE;
     }
     p->hdbc = dbc;
     return self;
@@ -1783,7 +1786,7 @@ dbc_trans(VALUE self, int what)
     SQLHDBC dbc = SQL_NULL_HDBC;
 
     e = get_env(self);
-    if (CLASS_OF(self) != Cenv) {
+    if (rb_obj_is_kind_of(self, Cenv) != Qtrue) {
 	DBC *d;
 
 	d = get_dbc(self);
@@ -3082,7 +3085,7 @@ stmt_params(VALUE self)
 static VALUE
 do_fetch(STMT *q, int mode)
 {
-    int i;
+    int i, offc;
     char **bufs;
     VALUE res;
 
@@ -3124,7 +3127,7 @@ do_fetch(STMT *q, int mode)
     case DOFETCH_HASH:
     case DOFETCH_HASH2:
 	if (q->colnames == NULL) {
-	    int need = sizeof (char *) * 2 * q->ncols;
+	    int need = sizeof (char *) * 4 * q->ncols;
 	    char **na, *p, name[SQL_MAX_MESSAGE_LENGTH];
 
 	    for (i = 0; i < q->ncols; i++) {
@@ -3139,7 +3142,7 @@ do_fetch(STMT *q, int mode)
 		    rb_raise(Cerror, "%s", get_err(SQL_NULL_HENV, SQL_NULL_HDBC,
 						   q->hstmt));
 		}
-		need += strlen(name) + 1;
+		need += 2 * strlen(name) + 1;
 		if (!succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt,
 			       SQLColAttributes(q->hstmt,
 						(SQLUSMALLINT) (i + 1),
@@ -3150,15 +3153,18 @@ do_fetch(STMT *q, int mode)
 		    rb_raise(Cerror, "%s", get_err(SQL_NULL_HENV, SQL_NULL_HDBC,
 						   q->hstmt));
 		}
-		need += strlen(upcase_if(name, q->upc)) + 1;
+		need += strlen(upcase_if(name, 1)) + 1 +
+			strlen(name) + 1;
 	    }
 	    p = ALLOC_N(char, need);
 	    if (p == NULL) {
 		rb_raise(Cerror, set_err("Out of memory"));
 	    }
 	    na = (char **) p;
-	    p += sizeof (char *) * 2 * q->ncols;
+	    p += sizeof (char *) * 4 * q->ncols;
 	    for (i = 0; i < q->ncols; i++) {
+		char *p0;
+
 		tracesql(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt,
 			 SQLColAttributes(q->hstmt, (SQLUSMALLINT) (i + 1),
 					  SQL_COLUMN_TABLE_NAME, name,
@@ -3168,13 +3174,20 @@ do_fetch(STMT *q, int mode)
 		strcpy(p, name);
 		strcat(p, ".");
 		p += strlen(p);
+		p0 = p;
 		tracesql(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt,
 			 SQLColAttributes(q->hstmt, (SQLUSMALLINT) (i + 1),
 					  SQL_COLUMN_LABEL, name,
 					  sizeof (name), NULL, NULL),
 			 "SQLColAttributes(SQL_COLUMN_LABEL)");
-		strcpy(p, upcase_if(name, q->upc));
+		strcpy(p, name);
 		na[i] = p;
+		p += strlen(p) + 1;
+		na[i + 3 * q->ncols] = p;
+		strcpy(p, na[i + q->ncols]);
+		p += p0 - na[i + q->ncols];
+		strcpy(p, upcase_if(name, 1));
+		na[i + 2 * q->ncols] = p;
 		p += strlen(p) + 1;
 	    }
 	    q->colnames = na;
@@ -3202,6 +3215,7 @@ do_fetch(STMT *q, int mode)
 	    res = rb_ary_new2(q->ncols);
 	}
     }
+    offc = q->upc ? (2 * q->ncols) : 0;
     for (i = 0; i < q->ncols; i++) {
 	SQLINTEGER curlen;
 	SQLSMALLINT type = q->coltypes[i].type;
@@ -3211,7 +3225,6 @@ do_fetch(STMT *q, int mode)
 
 	curlen = q->coltypes[i].size;
 	if (curlen == SQL_NO_TOTAL) {
-
 	    totlen = 0;
 	    valp = ALLOC_N(char, SEGSIZE + 1);
 	    freep = valp;
@@ -3308,13 +3321,10 @@ do_fetch(STMT *q, int mode)
 	}
 	switch (mode & DOFETCH_MODES) {
 	case DOFETCH_HASH:
-	    name = rb_tainted_str_new2(q->colnames[i]);
+	    name = rb_tainted_str_new2(q->colnames[i + offc]);
 	    goto doaset;
-	    
-	    rb_hash_aset(res, rb_tainted_str_new2(q->colnames[i]), v);
-	    break;
 	case DOFETCH_HASH2:
-	    name = rb_tainted_str_new2(q->colnames[i + q->ncols]);
+	    name = rb_tainted_str_new2(q->colnames[i + offc + q->ncols]);
 	doaset:
 	    if (rb_funcall(res, rb_intern("key?"), 1, name) == Qtrue) {
 		char buf[32];
@@ -3950,6 +3960,33 @@ stmt_do(int argc, VALUE *argv, VALUE self)
     }
     return rb_ensure(stmt_nrows, stmt, stmt_drop, stmt);
 }
+
+static VALUE
+stmt_ignorecase(int argc, VALUE *argv, VALUE self)
+{
+    VALUE onoff = Qnil;
+    int *flag = NULL;
+
+    rb_scan_args(argc, argv, "01", &onoff);
+    if (rb_obj_is_kind_of(self, Cstmt) == Qtrue) {
+	STMT *q;
+
+	Data_Get_Struct(self, STMT, q);
+	flag = &q->upc;
+    } else if (rb_obj_is_kind_of(self, Cdbc) == Qtrue) {
+	DBC *p;
+
+	Data_Get_Struct(self, DBC, p);
+	flag = &p->upc;
+    } else {
+	rb_raise(rb_eTypeError, "ODBC::Statement or ODBC::Database expected");
+	return Qnil;
+    }
+    if (argc > 0) {
+	*flag = RTEST(onoff);
+    }
+    return *flag ? Qtrue : Qfalse;
+}
 
 /*
  *----------------------------------------------------------------------
@@ -4453,6 +4490,7 @@ Init_odbc()
 
     /* connection (database) methods */
     rb_define_method(Cdbc, "initialize", dbc_connect, -1);
+    rb_define_method(Cdbc, "connect", dbc_connect, -1);
     rb_define_method(Cdbc, "connected?", dbc_connected, 0);
     rb_define_method(Cdbc, "drvconnect", dbc_drvconnect, 1);
     rb_define_method(Cdbc, "drop_all", dbc_dropall, 0);
@@ -4488,6 +4526,8 @@ Init_odbc()
     rb_define_method(Cdbc, "cursortype=", dbc_cursortype, -1);
     rb_define_method(Cdbc, "noscan", dbc_noscan, -1);
     rb_define_method(Cdbc, "noscan=", dbc_noscan, -1);
+    rb_define_method(Cdbc, "ignorecase", stmt_ignorecase, -1);
+    rb_define_method(Cdbc, "ignorecase=", stmt_ignorecase, -1);
 
     /* statement methods */
     rb_define_method(Cstmt, "drop", stmt_drop, 0);

@@ -27,7 +27,7 @@
   <body>
     <h1><a name="reference">Ruby ODBC Reference</a></h1>
     <div class = "lastmodifed">
-      Last update: Thu, 30 August 2001
+      Last update: Fri, 07 September 2001
     </div>
     <hr>
     <div>
@@ -354,6 +354,15 @@ addcust.call("J.R. User", 9999)
 	<dd>Sets or queries the cursor behaviour of the connection.
 	<dt><a name="noscan"><code>noscan[=<var>bool</var>]</code></a>
 	<dd>Sets or queries the noscan option of the connection.
+	<dt><a name="ignorecase"><code>ignorecase[=<var>bool</var>]</code><a>
+	<dd>Sets or queries the uppercase conversion for column names. If
+	  turned on (<var>bool</var> is true),
+	  <a href="#ODBC::Statement">ODBC::Statement</a>s
+	  created by database methods will report column names in
+	  <a href="#ODBC::Column">ODBC::Column</a>
+	  or in the statement fetch methods
+	  as uppercase strings. Otherwise (the default) column names are
+	  passed unmodified.
 	<dt><a name="drop_all"><code>drop_all</code></a>
 	<dd>Releases the resources of all open
 	  <a href="#ODBC::Statement">ODBC::Statement</a>s in this
@@ -449,6 +458,13 @@ addcust.call("J.R. User", 9999)
 	<dd>Returns the number of rows of the query result.
 	<dt><a name="cursorname"><code>cursorname[=<var>name</var>]</code></a>
 	<dd>Returns or sets the cursor name of the statement.
+	<dt><a name="ignorecase2"><code>ignorecase[=<var>bool</var>]</code><a>
+	<dd>Same as
+	  <a href="#ignorecase"><code>ODBC::Database.ignorecase</code></a>
+	  but affecting this statement only.
+	  Inherited by the current state of the
+	  <a href="#ODBC::Database">ODBC::Database</a> at the time the
+	  statement is created.
 	<dt><a name="fetch"><code>fetch</code></a>
 	<dd>Returns the next row of the query result as an array.
 	<dt><a name="fetch_first"><code>fetch_first</code></a>
@@ -493,8 +509,8 @@ addcust.call("J.R. User", 9999)
       <code>fetch_hash</code>) or with the
       <a href="#ODBC::Statement">ODBC::Statement</a> (<code>execute</code>)
       as parameter.
-      <p>If the underlying ODBC driver reports case-insensitive identifiers
-      during connection setup all column names used in the <code>column</code>,
+      <p>If the <a href="#ignorecase2"><code>ignorecase</code></a> option
+      is turned on, all column names used in the <code>column</code>,
       <code>columns</code>, and <code>*_hash</code> methods are converted to
       upper case.
     </div>

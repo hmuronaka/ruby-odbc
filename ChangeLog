@@ -1,6 +1,15 @@
 ODBC binding for Ruby
 ---------------------
 
+Fri Sep 07 2001 version 0.93 released
+
+	* doc updated
+	* removed default column name conversion to upper case
+	  as introduced in version 0.91
+	* added ignorecase, ignorecase= methods for ODBC::Database
+	  and ODBC::Statement as suggested by
+	  Sean O'Halpin <sean.ohalpin@bamberforsyth.com>
+
 Fri Aug 31 2001 version 0.92 released
 
 	* ODBC::Parameter class and ODBC::Statement.make_proc method added
