@@ -1,0 +1,33 @@
+# $Id: README,v 1.1 2001/05/13 09:52:05 chw Exp chw $
+
+ruby-odbc-0.1
+
+This is an ODBC binding for Ruby. So far it has been tested with
+MySQL 3.22, unixODBC 2.0.5, and Ruby 1.6.3 on Linux 2.2 for Intel.
+
+Requirements:
+
+    - Ruby 1.6.3
+    - unixODBC 2.0.5
+
+Installation:
+
+    $ ruby extconf.rb
+    $ make
+    # make install
+
+Usage:
+
+    Refer to doc/odbc.html
+
+TODO:
+
+    - Win32 port
+    - heavier testing
+    - improve documentation
+
+Author:
+
+    Christian Werner
+    mailto:chw@ch-werner.de
+    http://www.ch-werner.de/rubyodbc

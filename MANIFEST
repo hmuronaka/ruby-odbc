@@ -1,0 +1,15 @@
+COPYING
+ChangeLog
+MANIFEST
+README
+extconf.rb
+odbc.c
+test.rb
+doc/odbc.html
+test/00connect.rb
+test/10create_table.rb
+test/20insert.rb
+test/30select.rb
+test/40update.rb
+test/50drop_table.rb
+test/70close.rb

@@ -1,0 +1,223 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+    "http://www.w3.org/TR/html4/strict.dtd">
+<html lang="en">
+<head> 
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <meta name="Keywords" lang="en" content="ODBC Binding for Ruby">
+  <link rev="made" href="mailto:Christian.Werner@t-online.de">
+  <style type="text/css">
+   <!--
+    body {
+        background-color: white;
+        color: black;
+    }
+    address { text-align: right }
+    div.lastmodifed { text-align: right }
+    div.language { text-align: right }    
+    pre {
+        white-space: pre;
+        background-color: antiquewhite;
+        border: inset thin;
+    }
+   -->
+  </style>
+  <title>Ruby ODBC Reference</title>
+</head>
+<body>
+  <h1><a name="reference">Ruby ODBC Reference</a></h1>
+  <div class = "lastmodifed">
+    Last update: Sun, 13 May 2001
+  </div>
+  <hr>
+  <div>
+    <h2><a name="ODBC">ODBC</a></h2>
+    <p>
+The class to access ODBC data sources.
+For example, to send a query to the data source &quot;FOO&quot;:
+    </p>
+    <pre>
+require &quot;odbc&quot;
+conn = ODBC.new(&quot;FOO&quot;, &quot;jruser&quot;, &quot;secret&quot;)
+stmt = conn.run(&quot;select lastname from people&quot;)
+stmt.each do |lastname| print lastname end</pre>
+    <p>
+When underlying ODBC SQL functions report an error, an <code>ODBCError</code>
+exception with a corresponding error message from the ODBC driver manager
+and/or driver is raised.
+    </p>
+    <h3>super class:</h3>
+    <code>Object</code>
+    <h3>class methods:</h3>
+    <dl>
+      <dt><a name="ODBC.new"><code>new</code></a>
+        <dd>Creates an unconnected ODBC object, eg for a later
+	<code>drvconnect</code> method call.
+      <dt><a name="ODBC.new2"><code>new(<var>dsn</var>,
+                       [<var>user</var>, <var>passwd</var>])</code></a>
+        <dd>Connect to an ODBC data source. Options are:
+	<dl>
+          <dd><var>dsn</var>: Data source name (String or
+	  <a href="#ODBCDSN">ODBCDSN</a>)
+          <dd><var>user</var>: Login user name (String)
+          <dd><var>passwd</var>: Login password (String)
+        </dl>
+      <dt><a name="ODBC.datasources"><code>datasources</code></a>
+        <dd>Returns an array of <a href="#ODBCDSN">ODBCDSNs</a>, ie all
+          known data sources.
+      <dt><a name="ODBC.drivers"><code>drivers</code></a>
+        <dd>Returns an array of <a href="#ODBCDriver">ODBCDrivers</a>, ie all
+          known ODBC drivers.
+    </dl>
+
+    <h3>methods:</h3>
+     <dl>
+       <dt><a name="connect"><code>connect(<var>dsn</var>,
+	 [<var>user</var>, <var>passwd</var>])</code></a>
+         <dd>Connect to a data source, see <a href="#ODBC.new2">new</a>
+           class method.
+       <dt><a name="drvconnect"><code>drvconnect(<var>drv</var>)</code></a>
+         <dd>Connect to a data source specified by <var>drv</var>
+           (<a href="#ODBCDriver">ODBCDriver</a>).
+       <dt><a name="disconnect"><code>disconnect</code></a>
+         <dd>Disconnects from the data source.
+       <dt><a name="tables"><code>tables([<var>pattern</var>])</code></a>
+         <dd>Returns an <a href="#ODBCStmt">ODBCStmt</a> with
+	   information of all or some (<var>pattern</var> String given)
+           tables of the data source.
+       <dt><a name="columns"><code>columns([<var>table</var>])</code></a>
+         <dd>Returns an <a href="#ODBCStmt">ODBCStmt</a> with column information
+           of the given <var>table</var> (String).
+       <dt><a name="indexes"><code>indexes([<var>table</var>])</code></a>
+         <dd>Returns an <a href="#ODBCStmt">ODBCStmt</a> with index information
+           of the given <var>table</var> (String).
+       <dt><a name="types"><code>types([<var>tcode</var>])</code></a>
+         <dd>Returns an <a href="#ODBCStmt">ODBCStmt</a> with type information
+	   of the numeric SQL type <var>tcode</var> or all types if
+           <var>tcode</var> is omitted.
+       <dt> <a name="commit"><code>commit</code></a>
+	 <dd>Commits the current transaction.
+       <dt> <a name="rollback"><code>rollback</code></a>
+         <dd>Rollbacks the current transaction.
+       <dt><a name="run"><code>run(<var>sql</var>,
+	 [<var>args ...</var>])</code></a>
+         <dd>Prepares and executes the query specified by <var>sql</var>
+            with parameters bound
+            from <var>args</var> and returns an
+            <a href="#ODBCStmt">ODBCStmt</a>.
+       <dt><a name="prepare"><code>prepare(<var>sql</var>)</code></a>
+         <dd>Prepares the query specified by <var>sql</var> and returns
+            an <a href="#ODBCStmt">ODBCStmt</a>.
+     </dl>
+   </div>
+   <hr>
+   <div>
+     <h2><a name="ODBCStmt">ODBCStmt</a></h2>
+     <p>
+The class to represent the query result.  The object of this
+class is created as the result of every query.  You may need to invoke the
+close or drop methods for the finished object for better memory performance.
+     </p>
+When underlying ODBC SQL functions report an error, an <code>ODBCError</code>
+exception with a corresponding error message from the ODBC driver manager
+and/or driver is raised.
+     </p>
+     <p>
+ODBC to Ruby type mapping:
+     </p>
+<table><tr><th>ODBC</th><th>Ruby</th></tr>
+<tr><td>SQL_SMALLINT, SQL_INTEGER</td><td>T_FIXNUM, T_BIGNUM</td></tr>
+<tr><td>SQL_FLOAT, SQL_DOUBLE, SQL_REAL</td><td>T_FLOAT</td></tr>
+<tr><td>all others</td><td>T_STRING</td></tr>
+</table>
+
+     <h3>super class:</h3>
+     <p>
+       <code>Object</code>
+     </p>
+     <h2>methods:</h2>
+     <dl>
+       <dt><a name="close"><code>close</code></a>
+         <dd>Closes the <a href="#ODBCStmt">ODBCStmt</a>.
+       <dt><a name="drop"><code>drop</code></a>
+         <dd>Closes and frees the <a href="#ODBCStmt">ODBCStmt</a>.
+       <dt><a name="columns"><code>columns</code></a>
+         <dd>Returns the array of column names (Strings) of the query result.
+       <dt><a name="ncols"><code>ncols</code></a>
+         <dd>Returns the number of columns of the query result.
+       <dt><a name="nrows"><code>nrows</code></a>
+         <dd>Returns the number of rows of the query result.
+       <dt><a name="fetch"><code>fetch(<var>index</var>)</code></a>
+         <dd>Returns the next row of the query result as an array.
+       <dt><a name="fetch_first"><code>fetch_first</code></a>
+         <dd>Returns the first row of the query result as an array.
+       <dt><a name="fetch_last"><code>fetch_last</code></a>
+         <dd>Returns the last row of the query result as an array.
+       <dt><a name="fetch_prior"><code>fetch_prior</code></a>
+         <dd>Returns the previous row of the query result as an array.
+       <dt><a name="each"><code>each</code></a>
+	 <dd>Iterates over the query result, performing a <code>fetch</code>
+             for each row.
+       <dt><a name="prepare"><code>prepare(<var>sql</var>)</code></a>
+         <dd>Closes the current query and prepares it again from the
+             specified <var>sql</var> clause.
+       <dt><a name="execute"><code>execute([<var>args ...</var>])</code></a>
+         <dd>Binds <var>args</var> to current query and executes it.
+     </dl>
+  </div>
+  <hr>
+  <div>
+  <h2><a name="ODBCDSN">ODBCDSN</a></h2>
+     <P>
+The class to represent a data source name. The object of this class is
+created as the result of a <a href="#ODBC.datasources">ODBC.datasources</a>
+class method call.
+     </P>
+     <h3>super class:</h3>
+     <p>
+       <code>Object</code>
+     </p>
+     <h2>methods:</h2>
+     <dl>
+       <dt><a name="ODBCDSN.new"><code>new</code></a>
+         <dd>Returns an empty <a href="#ODBCDSN">ODBCDSN</a> object.
+       <dt><a name="ODBCDSN.name"><code>name[=<var>name</var>]</code></a>
+         <dd>Queries or sets the <var>name</var> (String) of the data source.
+       <dt><a name="ODBCDSN.descr"><code>descr[=<var>descr</var>]</code></a>
+         <dd>Queries or sets the <var>descr</var> (description, String)
+	     of the data source.
+    </dl>
+  </div>
+  <hr>
+  <h2><a name="ODBCDriver">ODBCDriver</a></h2>
+     <P>
+The class to represent an ODBC driver name with attributes.
+The object of this class is
+created as the result of a <a href="#ODBC.drivers">ODBC.drivers</a>
+class method call.
+     </P>
+     <h3>super class:</h3>
+     <p>
+       <code>Object</code>
+     </p>
+     <h2>methods:</h2>
+     <dl>
+       <dt><a name="ODBCDriver.new"><code>new</code></a>
+         <dd>Returns an empty <a href="#ODBCDriver">ODBCDriver</a> object.
+       <dt><a name="ODBCDriver.name"><code>name[=<var>name</var>]</code></a>
+         <dd>Queries or sets the <var>name</var> (String) of the ODBC driver.
+       <dt><a name="ODBCDSN.attrs"><code>attrs[[<var>key</var>][=<var>value</var>]]</code></a>
+         <dd>Queries or sets attributes in the <var>attrs</var> Hash of the
+	     ODBC driver. The <var>key</var>s and <var>value</var>s should be
+	     Strings.
+    </dl>
+  </div>
+  <hr>
+  <address>
+    mailto:
+    <a href="mailto:chw@ch-werner.de">Christian Werner</a>
+  </address>
+</body>
+</html>
+
+
