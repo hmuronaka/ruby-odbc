@@ -13,3 +13,6 @@ test/30select.rb
 test/40update.rb
 test/50drop_table.rb
 test/70close.rb
+utf8/extconf.rb
+utf8/odbc.c
+utf8/test.rb

@@ -1,6 +1,6 @@
-# $Id: README,v 1.16 2003/04/25 10:01:54 chw Exp chw $
+# $Id: README,v 1.18 2003/05/08 05:13:52 chw Exp chw $
 
-ruby-odbc-0.97
+ruby-odbc-0.98
 
 This is an ODBC binding for Ruby. So far it has been tested with
 
@@ -22,7 +22,7 @@ This is an ODBC binding for Ruby. So far it has been tested with
 
 Requirements:
 
-    - Ruby 1.6.[3-8]
+    - Ruby 1.6.[3-8] or Ruby >= 1.7
     - unixODBC 2.x or libiodbc 2.50 on UN*X 
 
 Installation:
@@ -31,13 +31,52 @@ Installation:
     $ make
     # make install
 
+Installation of utf8 version:
+
+    $ ruby -Cutf8 extconf.rb
+    $ make -C utf8
+    # make -C utf8 install
+
 Testing:
 
     $ ruby test.rb DSN [uid] [pwd]
+ or
+    $ ruby -KU -Cutf8 test.rb DSN [uid] [pwd]
 
 Usage:
 
     Refer to doc/odbc.html
+
+    The difference between utf8 and non-utf8 versions are:
+
+      - non-utf8 version uses normal SQL.* ANSI functions
+      - utf8 version uses SQL.*W UNICODE functions and
+        requires/returns all strings in UTF8 format
+
+    Thus, depending on the -K option of ruby one could use
+    that code snippet:
+
+      ...
+      if $KCODE == "UTF8" then
+        require 'odbc_utf8'
+      else
+        require 'odbc'
+      fi
+
+    It is also possible to load both non-utf8 and utf8 version
+    into ruby:
+
+      ...
+      # non-utf8 version
+      require 'odbc'
+      # utf8 version
+      require 'odbc_utf8'
+
+    Whichever is loaded first, gets the module name 'ODBC'.
+    The second loaded module will be named 'ODBC_UTF8' (for
+    'odbc_utf8') or 'ODBC_NONE' (for 'odbc'). That should
+    allow to use both versions simultaneously in special
+    situations.
 
 TODO:
 

@@ -1,6 +1,13 @@
 ODBC binding for Ruby
 ---------------------
 
+Thu May 08 2003 version 0.98 released
+
+	* added utf8 version (-DUNICODE, -D_UNICODE for CFLAGS),
+	  which generates odbc_utf.so, for build instructions
+	  see README. Thanks Bosko Ivanisevic <ivanisev@sezampro.yu>
+	  for ideas and testing.
+
 Fri Apr 25 2003 version 0.97 released
 
 	* align buffers for fetching scalar data (long, double et.al.)
@@ -9,7 +16,7 @@ Fri Apr 25 2003 version 0.97 released
 
 Wed Mar 19 2003 version 0.96 released
 
-	* added fall back to SQLFetch() when SQLFetchScrol(SQL_FETCH_NEXT)
+	* added fall back to SQLFetch() when SQLFetchScroll(SQL_FETCH_NEXT)
 	  or SQLExtendedFetch(SQL_FETCH_NEXT) report IM001 error,
 	  thanks Kiyonori Takeda <takeda@newsline.net> for testing.
 
