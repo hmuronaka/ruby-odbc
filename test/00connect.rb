@@ -1,1 +1,1 @@
-$c = ODBC.new($dsn, $uid, $pwd)
+$c = ODBC.connect($dsn, $uid, $pwd)

@@ -1,6 +1,14 @@
 ODBC binding for Ruby
 ---------------------
 
+Sun May 27 2001 version 0.3 released
+
+	* doc updated
+	* win32 port (mswin32 working, mingw untested)
+	* added types (ODBC::Date, ODBC::Time, ODBC::TimeStamp)
+	* reworked module/class organization
+	* major review
+
 Thu May 17 2001 version 0.2 released
 
 	* updated and improved doc

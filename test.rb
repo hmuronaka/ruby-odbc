@@ -1,4 +1,4 @@
-# $Id: test.rb,v 1.1 2001/05/13 06:08:56 chw Exp chw $
+# $Id: test.rb,v 1.3 2001/05/27 15:19:13 chw Exp chw $
 #
 # Execute in ruby-odbc top directory.
 #
@@ -22,8 +22,11 @@ begin
   end
 ensure
   begin
-    ODBC.new($dsn, $uid, $pwd).run("drop table test")
+    $c.drop_all
+  rescue
+  end
+  begin
+    ODBC.connect($dsn, $uid, $pwd).do("drop table test")
   rescue
   end
 end
-

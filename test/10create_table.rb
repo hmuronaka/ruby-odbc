@@ -1,1 +1,1 @@
-$c.run("create table test (id int not null, str char(32) not null)")
+$c.run("create table test (id int not null, str varchar(32) not null)")
