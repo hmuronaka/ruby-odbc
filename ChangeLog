@@ -1,6 +1,11 @@
 ODBC binding for Ruby
 ---------------------
 
+Mon Mar 22 2004 version 0.992 released
+
+	* fixed buggy UTF8->Unicode conversion code
+	* fixed handling of uppercase column names in row hashes
+
 Fri Dec 26 2003 version 0.991 released
 
 	* use SQLConfigDataSourceW() in utf8 version

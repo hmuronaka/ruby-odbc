@@ -1,12 +1,12 @@
 /*
  * ODBC-Ruby binding
- * Copyright (c) 2001-2003 Christian Werner <chw@ch-werner.de>
+ * Copyright (c) 2001-2004 Christian Werner <chw@ch-werner.de>
  *
  * See the file "COPYING" for information on usage
  * and redistribution of this file and for a
  * DISCLAIMER OF ALL WARRANTIES.
  *
- * $Id: odbc.c,v 1.30 2003/12/26 12:47:32 chw Exp chw $
+ * $Id: odbc.c,v 1.31 2004/03/22 05:31:36 chw Exp chw $
  */
 
 #undef ODBCVER
@@ -369,7 +369,7 @@ uc_from_utf(unsigned char *str)
 		} else if (c < 0xf0) {
 		    if ((str[1] & 0xc0) == 0x80 && (str[2] & 0xc0) == 0x80) {
 			unsigned long t = ((c & 0x0f) << 12) |
-			    ((str[1] << 6) & 0x3f) | (str[2] & 0x3f);
+			    ((str[1] & 0x3f) << 6) | (str[2] & 0x3f);
 
 			uc[i++] = t;
 			str += 3;
@@ -381,7 +381,7 @@ uc_from_utf(unsigned char *str)
 		    if ((str[1] & 0xc0) == 0x80 && (str[2] & 0xc0) == 0x80 &&
 			(str[3] & 0xc0) == 0x80) {
 			unsigned long t = ((c & 0x03) << 18) |
-			    ((str[1] << 12) & 0x3f) | ((str[2] << 6) & 0x3f) |
+			    ((str[1] & 0x3f) << 12) | ((str[2] & 0x3f) << 6) |
 			    (str[4] & 0x3f);
 
 			uc[i++] = t;
@@ -394,8 +394,8 @@ uc_from_utf(unsigned char *str)
 		    if ((str[1] & 0xc0) == 0x80 && (str[2] & 0xc0) == 0x80 &&
 			(str[3] & 0xc0) == 0x80 && (str[4] & 0xc0) == 0x80) {
 			unsigned long t = ((c & 0x01) << 24) |
-			    ((str[1] << 18) & 0x3f) | ((str[2] << 12) & 0x3f) |
-			    ((str[4] << 6) & 0x3f) | (str[5] & 0x3f);
+			    ((str[1] & 0x3f) << 18) | ((str[2] & 0x3f) << 12) |
+			    ((str[4] & 0x3f) << 6) | (str[5] & 0x3f);
 
 			uc[i++] = t;
 			str += 5;
@@ -3876,10 +3876,9 @@ do_fetch(STMT *q, int mode)
 		    name[name_len / sizeof (name[0])] = 0;
 		}
 #ifdef UNICODE
-		need += 12 * (uc_strlen(name) + 1);
+		need += 6 * 2 * (uc_strlen(name) + 1);
 #else
-		need += strlen(upcase_if(name, 1)) + 1 +
-			strlen(name) + 1;
+		need += 2 * (strlen(name) + 1);
 #endif
 	    }
 	    p = ALLOC_N(char, need);
@@ -3934,8 +3933,7 @@ do_fetch(STMT *q, int mode)
 		na[i + 3 * q->ncols] = p;
 		strcpy(p, na[i + q->ncols]);
 		p += p0 - na[i + q->ncols];
-		strcpy(p, upcase_if(na[i], 1));
-		na[i + 2 * q->ncols] = p;
+		na[i + 2 * q->ncols] = upcase_if(p, 1);
 		p += strlen(p) + 1;
 	    }
 	    q->colnames = na;
