@@ -1,6 +1,12 @@
 ODBC binding for Ruby
 ---------------------
 
+Fri Jun 08 2001 version 0.4 released
+
+	* Cygwin fixes thanks to Michael Neumann <neumann@s-direktnet.de>
+	* minor optimizations
+	* cleanup GC related functions
+
 Sun May 27 2001 version 0.3 released
 
 	* doc updated

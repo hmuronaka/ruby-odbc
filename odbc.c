@@ -16,9 +16,12 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * $Id: odbc.c,v 1.6 2001/05/27 15:18:11 chw Exp chw $
+ * $Id: odbc.c,v 1.7 2001/06/08 07:00:25 chw Exp chw $
  */
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
 #include "ruby.h"
 #ifdef HAVE_SQL_H
 #include <sql.h>
@@ -37,15 +40,15 @@
 #endif
 
 typedef struct {
-    SQLHENV henv;
     VALUE dbcs;
+    SQLHENV henv;
 } ENV;
 
 typedef struct {
     VALUE self;
     VALUE env;
-    SQLHDBC hdbc;
     VALUE stmts;
+    SQLHDBC hdbc;
 } DBC;
 
 typedef struct stmt {
@@ -186,6 +189,7 @@ free_env(ENV *e)
 	SQLFreeEnv(e->henv);
 	e->henv = SQL_NULL_HENV;
     }
+    e->dbcs = Qnil;
     free(e);
 }
 
@@ -197,13 +201,7 @@ free_dbc(DBC *p)
 	SQLFreeConnect(p->hdbc);
 	p->hdbc = SQL_NULL_HDBC;
     }
-    if (p->env != Qnil) {
-	ENV *e;
-
-	Data_Get_Struct(p->env, ENV, e);
-	rb_funcall(e->dbcs, rb_intern("delete"), 1, p->self);
-	p->env = Qnil;
-    }
+    p->self = p->env = p->stmts = Qnil;
     free(p);
 }
 
@@ -234,13 +232,8 @@ free_stmt(STMT *q)
 	SQLFreeStmt(q->hstmt, SQL_DROP);
 	q->hstmt = SQL_NULL_HSTMT;
     }
-    if (q->dbc != Qnil) {
-	DBC *p;
-
-	Data_Get_Struct(q->dbc, DBC, p);
-	rb_funcall(p->stmts, rb_intern("delete"), 1, q->self);
-	q->dbc = Qnil;
-    }
+    q->self = Qnil;
+    q->dbc = Qnil;
     free(q);
 }
 
@@ -255,19 +248,20 @@ free_stmt(STMT *q)
 static void
 mark_env(ENV *e)
 {
-    rb_gc_mark(e->dbcs);
+    if (e->dbcs != Qnil) {
+	rb_gc_mark(e->dbcs);
+    }
 }
 
 static void
 mark_dbc(DBC *p)
 {
     if (p->env != Qnil) {
-	ENV *e;
-
-	Data_Get_Struct(p->env, ENV, e);
 	rb_gc_mark(p->env);
     }
-    rb_gc_mark(p->stmts);
+    if (p->stmts != Qnil) {
+	rb_gc_mark(p->stmts);
+    }
 }
 
 static void
@@ -2201,6 +2195,7 @@ stmt_drop(VALUE self)
 	q->hstmt = SQL_NULL_HSTMT;
 	Data_Get_Struct(q->dbc, DBC, p);
 	rb_funcall(p->stmts, rb_intern("delete"), 1, q->self);
+	q->dbc = Qnil;
     }
     free_stmt_sub(q);
     return self;
@@ -2215,6 +2210,7 @@ stmt_close(VALUE self)
     if (q->hstmt != SQL_NULL_HSTMT) {
 	SQLFreeStmt(q->hstmt, SQL_CLOSE);
     }
+    free_stmt_sub(q);
     return self;
 }
 
@@ -2314,14 +2310,14 @@ do_fetch(STMT *q, int mode)
 
 	    for (i = 1; i <= q->ncols; i++) {
 		if (SQLColAttributes(q->hstmt, (SQLUSMALLINT) i,
-				     SQL_COLUMN_LABEL, name,
+				     SQL_COLUMN_TABLE_NAME, name,
 				     sizeof (name), NULL, NULL)
 		    != SQL_SUCCESS) {
 		    rb_raise(Cerror, get_err(NULL, NULL, q->hstmt));
 		}
-		need += 2 * (strlen(name) + 1);
+		need += strlen(name) + 1;
 		if (SQLColAttributes(q->hstmt, (SQLUSMALLINT) i,
-				     SQL_COLUMN_TABLE_NAME, name,
+				     SQL_COLUMN_LABEL, name,
 				     sizeof (name), NULL, NULL)
 		    != SQL_SUCCESS) {
 		    rb_raise(Cerror, get_err(NULL, NULL, q->hstmt));
@@ -2336,23 +2332,17 @@ do_fetch(STMT *q, int mode)
 	    p += sizeof (char *) * 2 * q->ncols;
 	    for (i = 1; i <= q->ncols; i++) {
 		SQLColAttributes(q->hstmt, (SQLUSMALLINT) i,
-				 SQL_COLUMN_LABEL, name,
-				 sizeof (name), NULL, NULL);
-		na[i - 1] = p;
-		strcpy(p, name);
-		p += strlen(p) + 1;
-	    }
-	    for (i = 1; i <= q->ncols; i++) {
-		SQLColAttributes(q->hstmt, (SQLUSMALLINT) i,
 				 SQL_COLUMN_TABLE_NAME, name,
 				 sizeof (name), NULL, NULL);
 		na[i - 1 + q->ncols] = p;
 		strcpy(p, name);
 		strcat(p, ".");
+		p += strlen(p);
 		SQLColAttributes(q->hstmt, (SQLUSMALLINT) i,
 				 SQL_COLUMN_LABEL, name,
 				 sizeof (name), NULL, NULL);
-		strcat(p, name);
+		strcpy(p, name);
+		na[i - 1] = p;
 		p += strlen(p) + 1;
 	    }
 	    q->colnames = na;
@@ -2547,12 +2537,10 @@ stmt_fetch_scroll(int argc, VALUE *argv, VALUE self)
     return Qnil;
 }
 
-static VALUE
-stmt_fetch_hash1(int argc, VALUE *argv, VALUE self)
+static int
+stmt_hash_mode(int argc, VALUE *argv, VALUE self)
 {
-    STMT *q;
-    VALUE withtab;
-    int mode; 
+    VALUE withtab = Qnil;
 
     rb_scan_args(argc, argv, "01", &withtab);
     if (withtab == Qnil) {
@@ -2561,7 +2549,15 @@ stmt_fetch_hash1(int argc, VALUE *argv, VALUE self)
     if (withtab != Qtrue && withtab != Qfalse) {
 	rb_raise(rb_eTypeError, "expecting boolean argument");
     }
-    mode = withtab == Qtrue ? DOFETCH_HASH2 : DOFETCH_HASH;
+    return withtab == Qtrue ? DOFETCH_HASH2 : DOFETCH_HASH;
+}
+
+static VALUE
+stmt_fetch_hash1(int argc, VALUE *argv, VALUE self)
+{
+    STMT *q;
+    int mode = stmt_hash_mode(argc, argv, self);
+
     Data_Get_Struct(self, STMT, q);
     if (q->ncols <= 0) {
 	return Qnil;
@@ -2589,17 +2585,8 @@ static VALUE
 stmt_fetch_first_hash(int argc, VALUE *argv, VALUE self)
 {
     STMT *q;
-    VALUE withtab;
-    int mode; 
+    int mode = stmt_hash_mode(argc, argv, self);
 
-    rb_scan_args(argc, argv, "01", &withtab);
-    if (withtab == Qnil) {
-	withtab = Qfalse;
-    }
-    if (withtab != Qtrue && withtab != Qfalse) {
-	rb_raise(rb_eTypeError, "expecting boolean argument");
-    }
-    mode = withtab == Qtrue ? DOFETCH_HASH2 : DOFETCH_HASH;
     Data_Get_Struct(self, STMT, q);
     if (q->ncols <= 0) {
 	return Qnil;
@@ -2644,14 +2631,9 @@ stmt_each_hash(int argc, VALUE *argv, VALUE self)
     VALUE row, withtab;
     int first;
     STMT *q;
+    int mode = stmt_hash_mode(argc, argv, self);
 
-    rb_scan_args(argc, argv, "01", &withtab);
-    if (withtab == Qnil) {
-	withtab = Qfalse;
-    }
-    if (withtab != Qtrue && withtab != Qfalse) {
-	rb_raise(rb_eTypeError, "expecting boolean argument");
-    }
+    withtab = mode == DOFETCH_HASH2 ? Qtrue : Qfalse;
     Data_Get_Struct(self, STMT, q);
     switch (SQLFetchScroll(q->hstmt, SQL_FETCH_FIRST, 0)) {
     case SQL_NO_DATA:
@@ -3041,7 +3023,123 @@ mkdate:
 /*
  *----------------------------------------------------------------------
  *
- *      Initialize this module.
+ *      Table of constants.
+ *
+ *----------------------------------------------------------------------
+ */
+
+#define O_CONST(x)    { #x, x }
+#define O_CONSTU(x,y) { #x, SQL_UNKOWN_TYPE }
+
+static struct {
+    const char *name;
+    int value;
+} o_const[] = {
+    O_CONST(SQL_CURSOR_FORWARD_ONLY),
+    O_CONST(SQL_CURSOR_KEYSET_DRIVEN),
+    O_CONST(SQL_CURSOR_DYNAMIC),
+    O_CONST(SQL_CURSOR_STATIC),
+    O_CONST(SQL_CONCUR_READ_ONLY),
+    O_CONST(SQL_CONCUR_LOCK),
+    O_CONST(SQL_CONCUR_ROWVER),
+    O_CONST(SQL_CONCUR_VALUES),
+    O_CONST(SQL_FETCH_NEXT),
+    O_CONST(SQL_FETCH_FIRST),
+    O_CONST(SQL_FETCH_LAST),
+    O_CONST(SQL_FETCH_PRIOR),
+    O_CONST(SQL_FETCH_ABSOLUTE),
+    O_CONST(SQL_FETCH_RELATIVE),
+    O_CONST(SQL_UNKNOWN_TYPE),
+    O_CONST(SQL_NUMERIC),
+    O_CONST(SQL_DECIMAL),
+    O_CONST(SQL_INTEGER),
+    O_CONST(SQL_SMALLINT),
+    O_CONST(SQL_FLOAT),
+    O_CONST(SQL_REAL),
+    O_CONST(SQL_DOUBLE),
+    O_CONST(SQL_VARCHAR),
+#ifdef SQL_DATETIME
+    O_CONST(SQL_DATETIME),
+#else
+    O_CONSTU(SQL_DATETIME),
+#endif
+#ifdef SQL_DATE
+    O_CONST(SQL_DATE),
+#else
+    O_CONSTU(SQL_DATE),
+#endif
+#ifdef SQL_TYPE_DATE
+    O_CONST(SQL_TYPE_DATE),
+#else
+    O_CONSTU(SQL_TYPE_DATE),
+#endif
+#ifdef SQL_TIME
+    O_CONST(SQL_TIME),
+#else
+    O_CONSTU(SQL_TIME),
+#endif
+#ifdef SQL_TYPE_TIME
+    O_CONST(SQL_TYPE_TIME),
+#else
+    O_CONSTU(SQL_TYPE_TIME),
+#endif
+#ifdef SQL_TIMESTAMP
+    O_CONST(SQL_TIMESTAMP),
+#else
+    O_CONSTU(SQL_TIMESTAMP),
+#endif
+#ifdef SQL_TYPE_TIMESTAMP
+    O_CONST(SQL_TYPE_TIMESTAMP),
+#else
+    O_CONSTU(SQL_TYPE_TIMESTAMP),
+#endif
+#ifdef SQL_LONGVARCHAR
+    O_CONST(SQL_LONGVARCHAR),
+#else
+    O_CONSTU(SQL_LONGVARCHAR),
+#endif
+#ifdef SQL_BINARY
+    O_CONST(SQL_BINARY),
+#else
+    O_CONSTU(SQL_BINARY),
+#endif
+#ifdef SQL_VARBINARY
+    O_CONST(SQL_VARBINARY),
+#else
+    O_CONSTU(SQL_VARBINARY),
+#endif
+#ifdef SQL_LONGVARBINARY
+    O_CONST(SQL_LONGVARBINARY),
+#else
+    O_CONSTU(SQL_LONGVARBINARY),
+#endif
+#ifdef SQL_BIGINT
+    O_CONST(SQL_BIGINT),
+#else
+    O_CONSTU(SQL_BIGINT),
+#endif
+#ifdef SQL_TINYINT
+    O_CONST(SQL_TINYINT),
+#else
+    O_CONSTU(SQL_TINYINT),
+#endif
+#ifdef SQL_BIT
+    O_CONST(SQL_BIT),
+#else
+    O_CONSTU(SQL_BIT),
+#endif
+#ifdef SQL_GUID
+    O_CONST(SQL_GUID),
+#else
+    O_CONSTU(SQL_GUID),
+#endif
+    { NULL, 0 }
+};
+
+/*
+ *----------------------------------------------------------------------
+ *
+ *      Module initializer.
  *
  *----------------------------------------------------------------------
  */
@@ -3049,6 +3147,8 @@ mkdate:
 void
 Init_odbc()
 {
+    int i;
+
     rb_require("date");
     rb_cDate = rb_eval_string("Date");
 
@@ -3227,114 +3327,8 @@ Init_odbc()
     rb_enable_super(Cproc, "call");
     rb_enable_super(Cproc, "[]");
 
-    /* some useful constants */
-    rb_define_const(Modbc, "SQL_CURSOR_FORWARD_ONLY",
-		    INT2NUM(SQL_CURSOR_FORWARD_ONLY));
-    rb_define_const(Modbc, "SQL_CURSOR_KEYSET_DRIVEN",
-		    INT2NUM(SQL_CURSOR_KEYSET_DRIVEN));
-    rb_define_const(Modbc, "SQL_CURSOR_DYNAMIC",
-		    INT2NUM(SQL_CURSOR_DYNAMIC));
-    rb_define_const(Modbc, "SQL_CURSOR_STATIC",
-		    INT2NUM(SQL_CURSOR_STATIC));
-    rb_define_const(Modbc, "SQL_CONCUR_READ_ONLY",
-		    INT2NUM(SQL_CONCUR_READ_ONLY));
-    rb_define_const(Modbc, "SQL_CONCUR_LOCK",
-		    INT2NUM(SQL_CONCUR_LOCK));
-    rb_define_const(Modbc, "SQL_CONCUR_ROWVER",
-		    INT2NUM(SQL_CONCUR_ROWVER));
-    rb_define_const(Modbc, "SQL_CONCUR_VALUES",
-		    INT2NUM(SQL_CONCUR_VALUES));
-
-    rb_define_const(Modbc, "SQL_FETCH_NEXT", INT2NUM(SQL_FETCH_NEXT));
-    rb_define_const(Modbc, "SQL_FETCH_FIRST", INT2NUM(SQL_FETCH_FIRST));
-    rb_define_const(Modbc, "SQL_FETCH_LAST", INT2NUM(SQL_FETCH_LAST));
-    rb_define_const(Modbc, "SQL_FETCH_PRIOR", INT2NUM(SQL_FETCH_PRIOR));
-    rb_define_const(Modbc, "SQL_FETCH_ABSOLUTE", INT2NUM(SQL_FETCH_ABSOLUTE));
-    rb_define_const(Modbc, "SQL_FETCH_RELATIVE", INT2NUM(SQL_FETCH_RELATIVE));
-    
-    rb_define_const(Modbc, "SQL_UNKNOWN_TYPE", INT2NUM(SQL_UNKNOWN_TYPE));
-    rb_define_const(Modbc, "SQL_CHAR", INT2NUM(SQL_CHAR));
-    rb_define_const(Modbc, "SQL_NUMERIC", INT2NUM(SQL_NUMERIC));
-    rb_define_const(Modbc, "SQL_DECIMAL", INT2NUM(SQL_DECIMAL));
-    rb_define_const(Modbc, "SQL_INTEGER", INT2NUM(SQL_INTEGER));
-    rb_define_const(Modbc, "SQL_SMALLINT", INT2NUM(SQL_SMALLINT));
-    rb_define_const(Modbc, "SQL_FLOAT", INT2NUM(SQL_FLOAT));
-    rb_define_const(Modbc, "SQL_REAL", INT2NUM(SQL_REAL));
-    rb_define_const(Modbc, "SQL_DOUBLE", INT2NUM(SQL_DOUBLE));
-    rb_define_const(Modbc, "SQL_VARCHAR", INT2NUM(SQL_VARCHAR));
-#ifdef SQL_DATETIME
-    rb_define_const(Modbc, "SQL_DATETIME", INT2NUM(SQL_DATETIME));
-#else
-    rb_define_const(Modbc, "SQL_DATETIME", INT2NUM(SQL_UNKNOWN_TYPE));
-#endif
-#ifdef SQL_DATE
-    rb_define_const(Modbc, "SQL_DATE", INT2NUM(SQL_DATE));
-#else
-    rb_define_const(Modbc, "SQL_DATE", INT2NUM(SQL_UNKNOWN_TYPE));
-#endif
-#ifdef SQL_TYPE_DATE
-    rb_define_const(Modbc, "SQL_TYPE_DATE", INT2NUM(SQL_TYPE_DATE));
-#else
-    rb_define_const(Modbc, "SQL_TYPE_DATE", INT2NUM(SQL_UNKNOWN_TYPE));
-#endif
-#ifdef SQL_TIME
-    rb_define_const(Modbc, "SQL_TIME", INT2NUM(SQL_TIME));
-#else
-    rb_define_const(Modbc, "SQL_TIME", INT2NUM(SQL_UNKNOWN_TYPE));
-#endif
-#ifdef SQL_TYPE_TIME
-    rb_define_const(Modbc, "SQL_TYPE_TIME", INT2NUM(SQL_TYPE_TIME));
-#else
-    rb_define_const(Modbc, "SQL_TYPE_TIME", INT2NUM(SQL_UNKNOWN_TYPE));
-#endif
-#ifdef SQL_TIMESTAMP
-    rb_define_const(Modbc, "SQL_TIMESTAMP", INT2NUM(SQL_TIMESTAMP));
-#else
-    rb_define_const(Modbc, "SQL_TIMESTAMP", INT2NUM(SQL_UNKNOWN_TYPE));
-#endif
-#ifdef SQL_TYPE_TIMESTAMP
-    rb_define_const(Modbc, "SQL_TYPE_TIMESTAMP", INT2NUM(SQL_TYPE_TIMESTAMP));
-#else
-    rb_define_const(Modbc, "SQL_TYPE_TIMESTAMP", INT2NUM(SQL_UNKNOWN_TYPE));
-#endif
-#ifdef SQL_LONGVARCHAR
-    rb_define_const(Modbc, "SQL_LONGVARCHAR", INT2NUM(SQL_LONGVARCHAR));
-#else
-    rb_define_const(Modbc, "SQL_LONGVARCHAR", INT2NUM(SQL_UNKNOWN_TYPE));
-#endif
-#ifdef SQL_BINARY
-    rb_define_const(Modbc, "SQL_BINARY", INT2NUM(SQL_BINARY));
-#else
-    rb_define_const(Modbc, "SQL_BINARY", INT2NUM(SQL_UNKNOWN_TYPE));
-#endif
-#ifdef SQL_VARBINARY
-    rb_define_const(Modbc, "SQL_VARBINARY", INT2NUM(SQL_VARBINARY));
-#else
-    rb_define_const(Modbc, "SQL_VARBINARY", INT2NUM(SQL_UNKNOWN_TYPE));
-#endif
-#ifdef SQL_LONGVARBINARY
-    rb_define_const(Modbc, "SQL_LONGVARBINARY", INT2NUM(SQL_LONGVARBINARY));
-#else
-    rb_define_const(Modbc, "SQL_LONGVARBINARY", INT2NUM(SQL_UNKNOWN_TYPE));
-#endif
-#ifdef SQL_BIGINT
-    rb_define_const(Modbc, "SQL_BIGINT", INT2NUM(SQL_BIGINT));
-#else
-    rb_define_const(Modbc, "SQL_BIGINT", INT2NUM(SQL_UNKNOWN_TYPE));
-#endif
-#ifdef SQL_TINYINT
-    rb_define_const(Modbc, "SQL_TINYINT", INT2NUM(SQL_TINYINT));
-#else
-    rb_define_const(Modbc, "SQL_TINYINT", INT2NUM(SQL_UNKNOWN_TYPE));
-#endif
-#ifdef SQL_BIT
-    rb_define_const(Modbc, "SQL_BIT", INT2NUM(SQL_BIT));
-#else
-    rb_define_const(Modbc, "SQL_BIT", INT2NUM(SQL_UNKNOWN_TYPE));
-#endif
-#ifdef SQL_GUID
-    rb_define_const(Modbc, "SQL_GUID", INT2NUM(SQL_GUID));
-#else
-    rb_define_const(Modbc, "SQL_GUID", INT2NUM(SQL_UNKNOWN_TYPE));
-#endif
+    /* constants */
+    for (i = 0; o_const[i].name != NULL; i++) {
+	rb_define_const(Modbc, o_const[i].name, INT2NUM(o_const[i].value));
+    }
 }

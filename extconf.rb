@@ -6,7 +6,7 @@ have_header("sqlext.h")
 have_header("odbcinst.h")
 
 # mingw untested !!!
-if PLATFORM =~ /mswin32|mingw/ then
+if PLATFORM =~ /(mswin32|mingw|cygwin)/ then
   have_library("odbc32", "")
   have_library("odbccp32", "")
   have_library("user32", "")
