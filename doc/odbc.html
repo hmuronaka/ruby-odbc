@@ -27,7 +27,7 @@
   <body>
     <h1><a name="reference">Ruby ODBC Reference</a></h1>
     <div class = "lastmodifed">
-      Last update: Sun, 27 May 2001
+      Last update: Sun, 10 June 2001
     </div>
     <hr>
     <div>
@@ -47,6 +47,9 @@
         <dd>Returns the last error message (String) or nil.
 	<dt><a name="ODBC::newenv"><code>newenv</code></a>
         <dd>Returns a new <a href="#ODBC::Environment">ODBC::Environment</a>.
+	<dt><a name="ODBC::connection_pooling">
+	    <code>connection_pooling[=<var>value</var>]</code></a>
+        <dd>Gets or sets the process-wide connection pooling attribute.
 	<dt><a name="ODBC::to_time1">
 	    <code>to_time(<var>timestamp</var>)</code></a>
 	<dt><a name="ODBC::to_time2"><code>to_time(<var>date</var>,
@@ -129,6 +132,16 @@
 	  <var>SQL_TINYINT</var>,
 	  <var>SQL_BIT</var>,
 	  <var>SQL_GUID</var>
+	<dt>Environment attributes:
+	<dd><var>SQL_CP_OFF</var>,
+	  <var>SQL_CP_ONE_PER_DRIVER</var>,
+	  <var>SQL_CP_ONE_PER_HENV</var>,
+	  <var>SQL_CP_DEFAULT</var>,
+	  <var>SQL_CP_STRICT_MATCH</var>,
+	  <var>SQL_CP_RELAXED_MATCH</var>,
+	  <var>SQL_CP_MATCH_DEFAULT</var>,
+	  <var>SQL_OV_ODBC2</var>,
+	  <var>SQL_OV_ODBC3</var>
       </dl>
     </div>
     <hr>
@@ -187,6 +200,16 @@
 	  block where the paramater is the object itself (an environment or
 	  a database connection). If the block raises an exception, the
 	  transaction is rolled back, otherwise committed.
+	<dt><a name="ODBC::Environment.connection_pooling">
+	    <code>connection_pooling[=<var>value</var>]</code></a>
+        <dd>Gets or sets the connection pooling attribute of the environment.
+	<dt><a name="ODBC::Environment.cp_match">
+	    <code>cp_match[=<var>value</var>]</code></a>
+        <dd>Gets or sets the connection pooling match attribute of the
+	  environment.
+	<dt><a name="ODBC::Environment.odbc_version">
+	    <code>odbc_version[=<var>value</var>]</code></a>
+        <dd>Gets or sets the ODBC version attribute of the environment.
       </dl>
       <h3>singleton methods:</h3>
       <dl>
@@ -272,15 +295,16 @@
 	<dt><a name="proc"><code>proc(<var>sql</var>)
 	      {|<var>stmt</var>| <var>block</var>}</code></a>
 	<dd>Prepares the query specified by <var>sql</var> within a
-	  a <a href="#ODBCProc">ODBCProc</a> and returns that procedure.
+	  <a href="#ODBCProc">ODBCProc</a> and returns that procedure.
 	  When the procedure is called, the statement is executed with
-	  the procedure's arguments and then bound as parameter in the
-	  block, eg
+	  the procedure's arguments bound to the statement's parameters
+	  and the statement is bound as parameter in the block, eg
 	  <pre># add customer given name and id
 addcust = dbc.proc("insert into customer values(?, ?)") { |stmt|
     stmt.nrows
 }
-addcust.call("J.R. User", 9999)</pre>
+addcust.call("J.R. User", 9999)
+# alternative form: addcust["J.R. User", 9999]</pre>
 	<dt><a name="autocommit"><code>autocommit([<var>bool</var>])</code></a>
 	<dd>Sets or queries the autocommit option of the connection.
 	<dt><a name="concurrency">
@@ -584,7 +608,8 @@ addcust.call("J.R. User", 9999)</pre>
       <h2><a name="ODBC::DSN">ODBC::DSN</a></h2>
       <P>
 	The class to represent a data source name. Objects of this class are
-	created as result of a <a href="#ODBC::datasources">ODBC::datasources</a>
+	created as result of a
+	<a href="#ODBC::datasources">ODBC::datasources</a>
 	module function call.
       </P>
       <h3>super class:</h3>
@@ -609,7 +634,7 @@ addcust.call("J.R. User", 9999)</pre>
     <div>
       <h2><a name="ODBC::Driver">ODBC::Driver</a></h2>
       <P>
-	The class to represent an ODBC driver name with attributes.
+	The class to represent an ODBC driver with name and attributes.
 	Objects of this class are
 	created as result of a <a href="#ODBC::drivers">ODBC::drivers</a>
 	module function call.
@@ -624,8 +649,8 @@ addcust.call("J.R. User", 9999)</pre>
 	<dd>Queries or sets the <var>name</var> (String) of the ODBC driver.
 	<dt><code>attrs[[<var>key</var>][=<var>value</var>]]</code></a>
 	<dd>Queries or sets attributes in the <var>attrs</var> Hash of the
-	  ODBC driver. The <var>key</var>s and <var>value</var>s should be
-	  Strings.
+	  ODBC driver object. The <var>key</var>s and <var>value</var>s
+	  should be Strings.
       </dl> 
       <h3>singleton methods:</h3>
       <dl>
@@ -637,7 +662,7 @@ addcust.call("J.R. User", 9999)</pre>
       <hr>
       <h2><a name="ODBCProc">ODBCProc</a></h2>
       <P>
-	The class to represent an procedure with ODBC database/statement
+	The class to represent a procedure with ODBC database/statement
 	context.
 	Objects of this class are created as result of a
 	<a href="#proc">ODBC::Database.proc</a> method call.

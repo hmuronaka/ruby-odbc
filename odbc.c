@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * $Id: odbc.c,v 1.7 2001/06/08 07:00:25 chw Exp chw $
+ * $Id: odbc.c,v 1.8 2001/06/10 07:38:12 chw Exp chw $
  */
 
 #ifdef _WIN32
@@ -60,6 +60,7 @@ typedef struct stmt {
     int ncols;
     int *coltypes;
     char **colnames;
+    char **dbufs;
 } STMT;
 
 static VALUE Modbc;
@@ -221,6 +222,10 @@ free_stmt_sub(STMT *q)
     if (q->colnames) {
 	xfree(q->colnames);
 	q->colnames = NULL;
+    }
+    if (q->dbufs) {
+	xfree(q->dbufs);
+	q->dbufs = NULL;
     }
 }
 
@@ -479,12 +484,12 @@ dbc_dsns(VALUE self)
     env = env_new(Cenv);
     Data_Get_Struct(env, ENV, e);
     aret = rb_ary_new();
-    while ((result = SQLDataSources(e->henv, first ?
-				    SQL_FETCH_FIRST : SQL_FETCH_NEXT,
+    while ((result = SQLDataSources(e->henv, (SQLUSMALLINT) (first ?
+				    SQL_FETCH_FIRST : SQL_FETCH_NEXT),
 				    (SQLCHAR *) dsn,
-				    sizeof (dsn), &dsnLen,
+				    (SQLSMALLINT) sizeof (dsn), &dsnLen,
 				    (SQLCHAR *) descr,
-				    sizeof (descr), &descrLen))
+				    (SQLSMALLINT) sizeof (descr), &descrLen))
 	   == SQL_SUCCESS) {
 	VALUE odsn = rb_obj_alloc(Cdsn);
 
@@ -517,11 +522,12 @@ dbc_drivers(VALUE self)
     env = env_new(Cenv);
     Data_Get_Struct(env, ENV, e);
     aret = rb_ary_new();
-    while ((result = SQLDrivers(e->henv, first ?
-				SQL_FETCH_FIRST : SQL_FETCH_NEXT,
+    while ((result = SQLDrivers(e->henv, (SQLUSMALLINT) (first ?
+				SQL_FETCH_FIRST : SQL_FETCH_NEXT),
 				(SQLCHAR *) driver,
-				sizeof (driver), &driverLen,
-				(SQLCHAR *) attrs, sizeof (attrs), &attrsLen))
+				(SQLSMALLINT) sizeof (driver), &driverLen,
+				(SQLCHAR *) attrs,
+				(SQLSMALLINT) sizeof (attrs), &attrsLen))
 	   == SQL_SUCCESS) {
 	VALUE odrv = rb_obj_alloc(Cdrv);
 	VALUE h = rb_hash_new();
@@ -860,12 +866,13 @@ make_coltypes(SQLHSTMT hstmt, int ncols)
     int i, *ret = NULL;
     SQLINTEGER type, size;
     
-    for (i = 1; i <= ncols; i++) {
-	if (SQLColAttributes(hstmt, (SQLUSMALLINT) i, SQL_COLUMN_TYPE,
+    for (i = 0; i < ncols; i++) {
+	if (SQLColAttributes(hstmt, (SQLUSMALLINT) (i + 1), SQL_COLUMN_TYPE,
 			     NULL, 0, NULL, &type) != SQL_SUCCESS) {
 	    return ret;
 	}
-	if (SQLColAttributes(hstmt, (SQLUSMALLINT) i, SQL_COLUMN_DISPLAY_SIZE,
+	if (SQLColAttributes(hstmt, (SQLUSMALLINT) (i + 1),
+			     SQL_COLUMN_DISPLAY_SIZE,
 			     NULL, 0, NULL, &size) != SQL_SUCCESS) {
 	    return ret;
 	}
@@ -874,10 +881,11 @@ make_coltypes(SQLHSTMT hstmt, int ncols)
     if (ret == NULL) {
 	return NULL;
     }
-    for (i = 1; i <= ncols; i++) {
-	SQLColAttributes(hstmt, (SQLUSMALLINT) i, SQL_COLUMN_TYPE,
+    for (i = 0; i < ncols; i++) {
+	SQLColAttributes(hstmt, (SQLUSMALLINT) (i + 1), SQL_COLUMN_TYPE,
 			 NULL, 0, NULL, &type);
-	SQLColAttributes(hstmt, (SQLUSMALLINT) i, SQL_COLUMN_DISPLAY_SIZE,
+	SQLColAttributes(hstmt, (SQLUSMALLINT) (i + 1),
+			 SQL_COLUMN_DISPLAY_SIZE,
 			 NULL, 0, NULL, &size);
 	switch (type) {
 #ifdef SQL_BIT
@@ -924,8 +932,8 @@ make_coltypes(SQLHSTMT hstmt, int ncols)
 	    }
 	    break;
 	}
-	ret[i - 1] = type;
-	ret[i - 1 + ncols] = size;
+	ret[i] = type;
+	ret[i + ncols] = size;
     }
     return ret;
 }
@@ -951,7 +959,7 @@ make_pinfo(SQLHSTMT hstmt, int nump)
 	SQLSMALLINT type, scale, nullable;
 	SQLUINTEGER col;
 
-	switch (SQLDescribeParam(hstmt, (SQLUSMALLINT) i + 1, &type,
+	switch (SQLDescribeParam(hstmt, (SQLUSMALLINT) (i + 1), &type,
 				 &col, &scale, &nullable)) {
 	case SQL_SUCCESS:
 	    pinfo[i * 4 + 0] = type;
@@ -1011,7 +1019,7 @@ make_result(VALUE dbc, SQLHSTMT hstmt, VALUE result, int mode)
 	result = Data_Make_Struct(Cstmt, STMT, mark_stmt, free_stmt, q);
 	q->self = result;
 	q->pinfo = q->coltypes = NULL;
-	q->colnames = NULL;
+	q->colnames = q->dbufs = NULL;
 	rb_hash_aset(p->stmts, q->self, q->self);
     } else {
 	Data_Get_Struct(result, STMT, q);
@@ -1385,6 +1393,58 @@ dbc_transaction(VALUE self)
     ret = rb_ary_entry(a, 1);
     rb_exc_raise(rb_exc_new3(CLASS_OF(ret), ret));
     return Qnil;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ *      Environment attribute handling.
+ *
+ *----------------------------------------------------------------------
+ */
+
+static VALUE
+do_attr(int argc, VALUE *argv, VALUE self, int op)
+{
+    SQLHENV henv = NULL;
+    VALUE val;
+    SQLINTEGER v, l;
+
+    if (self != Modbc) {
+	henv = get_env(self)->henv;
+    }
+    rb_scan_args(argc, argv, "01", &val);
+    if (val == Qnil) {
+	if (SQLGetEnvAttr(henv, (SQLINTEGER) op, (SQLPOINTER) &v,
+			  sizeof (v), &l) != SQL_SUCCESS) {
+	    rb_raise(Cerror, get_err(henv, NULL, NULL));
+	}
+	return rb_int2inum(v);
+    }
+    v = NUM2INT(val);
+    if (SQLSetEnvAttr(henv, (SQLINTEGER) op, (SQLPOINTER) v, SQL_IS_INTEGER)
+	!= SQL_SUCCESS) {
+	rb_raise(Cerror, get_err(henv, NULL, NULL));
+    }
+    return Qnil;
+}
+
+static VALUE
+env_cpooling(int argc, VALUE *argv, VALUE self)
+{
+    return do_attr(argc, argv, self, SQL_ATTR_CONNECTION_POOLING);
+}
+
+static VALUE
+env_cpmatch(int argc, VALUE *argv, VALUE self)
+{
+    return do_attr(argc, argv, self, SQL_ATTR_CP_MATCH);
+}
+
+static VALUE
+env_odbcver(int argc, VALUE *argv, VALUE self)
+{
+    return do_attr(argc, argv, self, SQL_ATTR_ODBC_VERSION);
 }
 
 /*
@@ -2291,15 +2351,34 @@ do_fetch(STMT *q, int mode)
     if (q->ncols <= 0) {
 	rb_raise(Cerror, set_err("no columns in result set"));
     }
-    bufs = alloca(sizeof (char *) * q->ncols);
-    for (i = 1; i <= q->ncols; i++) {
-	int len = q->coltypes[i - 1 + q->ncols];
+    bufs = q->dbufs;
+    if (bufs == NULL) {
+	int need = sizeof (char *) * q->ncols;
+	char *p;
 
-	if (len == SQL_NO_TOTAL) {
-	    bufs[i - 1] = NULL;
-	    continue;
+	for (i = 0; i < q->ncols; i++) {
+	    int len = q->coltypes[i + q->ncols];
+
+	    if (len != SQL_NO_TOTAL) {
+		need += len;
+	    }
 	}
-	bufs[i - 1] = alloca(len);
+	p = ALLOC_N(char, need);
+	if (p == NULL) {
+	    rb_raise(Cerror, set_err("out of memory"));
+	}
+	q->dbufs = bufs = (char **) p;
+	p += sizeof (char *) * q->ncols;
+	for (i = 0; i < q->ncols; i++) {
+	    int len = q->coltypes[i + q->ncols];
+
+	    if (len == SQL_NO_TOTAL) {
+		bufs[i] = NULL;
+	    } else {
+		bufs[i] = p;
+		p += len;
+	    }
+	}
     }
     switch (mode) {
     case DOFETCH_HASH:
@@ -2308,15 +2387,15 @@ do_fetch(STMT *q, int mode)
 	    int need = sizeof (char *) * 2 * q->ncols;
 	    char **na, *p, name[256];
 
-	    for (i = 1; i <= q->ncols; i++) {
-		if (SQLColAttributes(q->hstmt, (SQLUSMALLINT) i,
+	    for (i = 0; i < q->ncols; i++) {
+		if (SQLColAttributes(q->hstmt, (SQLUSMALLINT) (i + 1),
 				     SQL_COLUMN_TABLE_NAME, name,
 				     sizeof (name), NULL, NULL)
 		    != SQL_SUCCESS) {
 		    rb_raise(Cerror, get_err(NULL, NULL, q->hstmt));
 		}
 		need += strlen(name) + 1;
-		if (SQLColAttributes(q->hstmt, (SQLUSMALLINT) i,
+		if (SQLColAttributes(q->hstmt, (SQLUSMALLINT) (i + 1),
 				     SQL_COLUMN_LABEL, name,
 				     sizeof (name), NULL, NULL)
 		    != SQL_SUCCESS) {
@@ -2330,19 +2409,19 @@ do_fetch(STMT *q, int mode)
 	    }
 	    na = (char **) p;
 	    p += sizeof (char *) * 2 * q->ncols;
-	    for (i = 1; i <= q->ncols; i++) {
-		SQLColAttributes(q->hstmt, (SQLUSMALLINT) i,
+	    for (i = 0; i < q->ncols; i++) {
+		SQLColAttributes(q->hstmt, (SQLUSMALLINT) (i + 1),
 				 SQL_COLUMN_TABLE_NAME, name,
 				 sizeof (name), NULL, NULL);
-		na[i - 1 + q->ncols] = p;
+		na[i + q->ncols] = p;
 		strcpy(p, name);
 		strcat(p, ".");
 		p += strlen(p);
-		SQLColAttributes(q->hstmt, (SQLUSMALLINT) i,
+		SQLColAttributes(q->hstmt, (SQLUSMALLINT) (i + 1),
 				 SQL_COLUMN_LABEL, name,
 				 sizeof (name), NULL, NULL);
 		strcpy(p, name);
-		na[i - 1] = p;
+		na[i] = p;
 		p += strlen(p) + 1;
 	    }
 	    q->colnames = na;
@@ -2352,14 +2431,14 @@ do_fetch(STMT *q, int mode)
     default:
 	res = rb_ary_new2(q->ncols);
     }
-    for (i = 1; i <= q->ncols; i++) {
+    for (i = 0; i < q->ncols; i++) {
 	SQLINTEGER curlen;
-	SQLSMALLINT type = q->coltypes[i - 1];
+	SQLSMALLINT type = q->coltypes[i];
 	VALUE v;
 	char *valp, *freep = NULL;
 	SQLINTEGER totlen;
 
-	curlen = q->coltypes[i - 1 + q->ncols];
+	curlen = q->coltypes[i + q->ncols];
 	if (curlen == SQL_NO_TOTAL) {
 
 	    totlen = 0;
@@ -2368,7 +2447,7 @@ do_fetch(STMT *q, int mode)
 	    while (curlen == SQL_NO_TOTAL || curlen > SEGSIZE) {
 		int ret;
 
-		ret = SQLGetData(q->hstmt, (SQLUSMALLINT) i, type,
+		ret = SQLGetData(q->hstmt, (SQLUSMALLINT) (i + 1), type,
 				 (SQLPOINTER) (valp + totlen),
 				 type == SQL_C_CHAR ? SEGSIZE + 1 : SEGSIZE,
 				 &curlen);
@@ -2401,8 +2480,8 @@ do_fetch(STMT *q, int mode)
 	    }
 	} else {
 	    totlen = curlen;
-	    valp = bufs[i - 1];
-	    if (SQLGetData(q->hstmt, (SQLUSMALLINT) i, type,
+	    valp = bufs[i];
+	    if (SQLGetData(q->hstmt, (SQLUSMALLINT) (i + 1), type,
 			   (SQLPOINTER) valp, totlen, &curlen) == SQL_ERROR) {
 		rb_raise(Cerror, get_err(NULL, NULL, q->hstmt));
 	    }
@@ -2452,10 +2531,10 @@ do_fetch(STMT *q, int mode)
 	}
 	switch (mode) {
 	case DOFETCH_HASH:
-	    rb_hash_aset(res, rb_str_new2(q->colnames[i - 1]), v);
+	    rb_hash_aset(res, rb_str_new2(q->colnames[i]), v);
 	    break;
 	case DOFETCH_HASH2:
-	    rb_hash_aset(res, rb_str_new2(q->colnames[i - 1 + q->ncols]), v);
+	    rb_hash_aset(res, rb_str_new2(q->colnames[i + q->ncols]), v);
 	    break;
 	default:
 	    rb_ary_push(res, v);
@@ -2791,7 +2870,7 @@ stmt_exec_int(int argc, VALUE *argv, VALUE self, int mode)
 	if (coldef == 0) {
 	    coldef = vlen;
 	}
-	if (SQLBindParameter(q->hstmt, (SQLUSMALLINT) i + 1, SQL_PARAM_INPUT,
+	if (SQLBindParameter(q->hstmt, (SQLUSMALLINT) (i + 1), SQL_PARAM_INPUT,
 			     ctype, (SQLSMALLINT) q->pinfo[i * 4 + 0],
 			     coldef, (SQLSMALLINT) q->pinfo[i * 4 + 2],
 			     valp, vlen, &rlen) == SQL_ERROR) {
@@ -2801,7 +2880,7 @@ stmt_exec_int(int argc, VALUE *argv, VALUE self, int mode)
     for (; i < q->nump; i++) {
 	SQLINTEGER isnull = SQL_NULL_DATA;
 
-	if (SQLBindParameter(q->hstmt, (SQLUSMALLINT) i + 1, SQL_PARAM_INPUT,
+	if (SQLBindParameter(q->hstmt, (SQLUSMALLINT) (i + 1), SQL_PARAM_INPUT,
 			     SQL_C_CHAR, (SQLSMALLINT) q->pinfo[i * 4 + 0],
 			     (SQLUINTEGER) q->pinfo[i * 4 + 1],
 			     (SQLSMALLINT) q->pinfo[i * 4 + 2],
@@ -3029,7 +3108,8 @@ mkdate:
  */
 
 #define O_CONST(x)    { #x, x }
-#define O_CONSTU(x,y) { #x, SQL_UNKOWN_TYPE }
+#define O_CONSTU(x)   { #x, SQL_UNKOWN_TYPE }
+#define O_CONST2(x,y) { #x, y }
 
 static struct {
     const char *name;
@@ -3050,6 +3130,7 @@ static struct {
     O_CONST(SQL_FETCH_ABSOLUTE),
     O_CONST(SQL_FETCH_RELATIVE),
     O_CONST(SQL_UNKNOWN_TYPE),
+    O_CONST(SQL_CHAR),
     O_CONST(SQL_NUMERIC),
     O_CONST(SQL_DECIMAL),
     O_CONST(SQL_INTEGER),
@@ -3133,6 +3214,33 @@ static struct {
 #else
     O_CONSTU(SQL_GUID),
 #endif
+#ifdef SQL_ATTR_ODBC_VERSION
+    O_CONST(SQL_OV_ODBC2),
+    O_CONST(SQL_OV_ODBC3),
+#else
+    O_CONST2(SQL_OV_ODBC2, 2),
+    O_CONST2(SQL_OV_ODBC3, 3),
+#endif
+#ifdef SQL_ATTR_CONNECTION_POOLING
+    O_CONST(SQL_CP_OFF),
+    O_CONST(SQL_CP_ONE_PER_DRIVER),
+    O_CONST(SQL_CP_ONE_PER_HENV),
+    O_CONST(SQL_CP_DEFAULT),
+#else
+    O_CONST2(SQL_CP_OFF, 0),
+    O_CONST2(SQL_CP_ONE_PER_DRIVER, 0),
+    O_CONST2(SQL_CP_ONE_PER_HENV, 0),
+    O_CONST2(SQL_CP_DEFAULT, 0),
+#endif
+#ifdef SQL_ATTR_CP_MATCH
+    O_CONST(SQL_CP_STRICT_MATCH),
+    O_CONST(SQL_CP_RELAXED_MATCH),
+    O_CONST(SQL_CP_MATCH_DEFAULT),
+#else
+    O_CONST(SQL_CP_STRICT_MATCH, 0),
+    O_CONST(SQL_CP_RELAXED_MATCH, 0),
+    O_CONST(SQL_CP_MATCH_DEFAULT, 0),
+#endif
     { NULL, 0 }
 };
 
@@ -3162,20 +3270,23 @@ Init_odbc()
     rb_include_module(Cstmt, rb_mEnumerable);
 
     Ccolumn = rb_define_class_under(Modbc, "Column", Cobj);
-    rb_funcall(Ccolumn, rb_intern("attr_reader"), 9,
-	       rb_str_new2("name"), rb_str_new2("table"),
-	       rb_str_new2("type"), rb_str_new2("length"),
-	       rb_str_new2("nullable"), rb_str_new2("scale"),
-	       rb_str_new2("precision"), rb_str_new2("searchable"),
-	       rb_str_new2("unsigned"));
+    rb_attr(Ccolumn, rb_intern("name"), 1, 0, 0);
+    rb_attr(Ccolumn, rb_intern("table"), 1, 0, 0);
+    rb_attr(Ccolumn, rb_intern("type"), 1, 0, 0);
+    rb_attr(Ccolumn, rb_intern("length"), 1, 0, 0);
+    rb_attr(Ccolumn, rb_intern("nullable"), 1, 0, 0);
+    rb_attr(Ccolumn, rb_intern("scale"), 1, 0, 0);
+    rb_attr(Ccolumn, rb_intern("precision"), 1, 0, 0);
+    rb_attr(Ccolumn, rb_intern("searchable"), 1, 0, 0);
+    rb_attr(Ccolumn, rb_intern("unsigned"), 1, 0, 0);
 
     Cdsn = rb_define_class_under(Modbc, "DSN", Cobj);
-    rb_funcall(Cdsn, rb_intern("attr_accessor"), 2,
-	       rb_str_new2("name"), rb_str_new2("descr"));
+    rb_attr(Cdsn, rb_intern("name"), 1, 1, 0);
+    rb_attr(Cdsn, rb_intern("descr"), 1, 1, 0);
 
     Cdrv = rb_define_class_under(Modbc, "Driver", Cobj);
-    rb_funcall(Cdrv, rb_intern("attr_accessor"), 2,
-	       rb_str_new2("name"), rb_str_new2("attrs"));
+    rb_attr(Cdrv, rb_intern("name"), 1, 1, 0);
+    rb_attr(Cdrv, rb_intern("attrs"), 1, 1, 0);
 
     Cerror = rb_define_class_under(Modbc, "Error", rb_eStandardError);
 
@@ -3196,6 +3307,7 @@ Init_odbc()
     rb_define_module_function(Modbc, "newenv", env_new, 0);
     rb_define_module_function(Modbc, "to_time", mod_2time, -1);
     rb_define_module_function(Modbc, "to_date", mod_2date, 1);
+    rb_define_module_function(Modbc, "connection_pooling", env_cpooling, -1);
 
     /* singleton methods and constructors */
     rb_define_singleton_method(Cobj, "error", dbc_error, 0);
@@ -3217,6 +3329,9 @@ Init_odbc()
     rb_define_method(Cenv, "transaction", dbc_transaction, 0);
     rb_define_method(Cenv, "commit", dbc_commit, 0);
     rb_define_method(Cenv, "rollback", dbc_rollback, 0);
+    rb_define_method(Cenv, "connection_pooling", env_cpooling, -1);
+    rb_define_method(Cenv, "cp_match", env_cpmatch, -1);
+    rb_define_method(Cenv, "odbc_version", env_odbcver, -1);
 
     /* management things (odbcinst.h) */
     rb_define_module_function(Modbc, "add_dsn", dbc_adddsn, -1);

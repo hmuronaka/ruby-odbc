@@ -1,6 +1,15 @@
 ODBC binding for Ruby
 ---------------------
 
+Sun Jun 10 2001 version 0.5 released
+
+	* doc updated
+	* added environment attribute setting/getting methods
+	* eliminated alloca() in fetching data
+	* added missing SQL_CHAR constant
+	* fixed accessor methods for ODBC::(DSN|Driver|Column) as
+	  suggested by Michael Neumann <neumann@s-direktnet.de>
+
 Fri Jun 08 2001 version 0.4 released
 
 	* Cygwin fixes thanks to Michael Neumann <neumann@s-direktnet.de>

@@ -1,4 +1,4 @@
-# $Id: test.rb,v 1.3 2001/05/27 15:19:13 chw Exp chw $
+# $Id: test.rb,v 1.4 2001/06/10 07:30:59 chw Exp chw $
 #
 # Execute in ruby-odbc top directory.
 #
@@ -22,7 +22,7 @@ begin
   end
 ensure
   begin
-    $c.drop_all
+    $c.drop_all unless $c.type != ODBC::Database
   rescue
   end
   begin
