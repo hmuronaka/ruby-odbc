@@ -27,7 +27,7 @@
   <body>
     <h1><a name="reference">Ruby ODBC Reference</a></h1>
     <div class = "lastmodifed">
-      Last update: Fri, 24 August 2001
+      Last update: Thu, 30 August 2001
     </div>
     <hr>
     <div>
@@ -805,6 +805,9 @@ INTERN (1) [RubyODBC]Programmer forgot to RTFM</pre>
 	  <var>issys=false</var>)</code><br>
 	<code>ODBC::trace([<var>mask</var>])</code><br>
 	<br>
+	<code>ODBC::Statement.parameter([<var>n</var>])</code><br>
+	<code>ODBC::Statement.parameters</code><br>
+	<code>ODBC::Statement.nparams</code><br>
 	<code>ODBC::Statement.fetch!</code><br>
 	<code>ODBC::Statement.fetch_first!</code><br>
 	<code>ODBC::Statement.fetch_first_hash(<var>with_table_names=false</var>)
@@ -813,6 +816,8 @@ INTERN (1) [RubyODBC]Programmer forgot to RTFM</pre>
 	  <var>offset=1</var>)</code><br>
 	<code>ODBC::Statement.fetch_hash!(<var>with_table_names=false</var>)
 	  </code><br>
+	<code>ODBC::Statement.make_proc(<var>stmt</var>)</code><br><br>
+	<code>ODBC::Parameter ...</code><br><br>
       </P>
     <hr>
     <address>

@@ -1,6 +1,14 @@
 ODBC binding for Ruby
 ---------------------
 
+Fri Aug 31 2001 version 0.92 released
+
+	* ODBC::Parameter class and ODBC::Statement.make_proc method added
+	* changes to support libiodbc-2.50 eg on Debian, thanks
+	  Massimiliano Mirra <info@chromatic-harp.com> for testing
+	* fixed typos in constant table (SQL_CP_* symbols, O_CONSTU macro)
+	* if odbcinst.h not available, make dummy DSN config methods
+
 Sat Aug 25 2001 version 0.91 released
 
 	* handle non-unique keys in column name/result set hashes
