@@ -27,7 +27,7 @@
   <body>
     <h1><a name="reference">Ruby ODBC Reference</a></h1>
     <div class = "lastmodifed">
-      Last update: Mon, 13 August 2001
+      Last update: Fri, 24 August 2001
     </div>
     <hr>
     <div>
@@ -335,24 +335,24 @@ addcust = dbc.proc("insert into customer values(?, ?)") { |stmt|
 addcust.call("J.R. User", 9999)
 
 # alternative to call: addcust["J.R. User", 9999]</pre>
-	<dt><a name="autocommit"><code>autocommit([<var>bool</var>])</code></a>
+	<dt><a name="autocommit"><code>autocommit[=<var>bool</var>]</code></a>
 	<dd>Sets or queries the autocommit option of the connection.
 	<dt><a name="concurrency">
-	    <code>concurrency([<var>intval</var>])</code></a>
+	    <code>concurrency[=<var>intval</var>]</code></a>
 	<dd>Sets or queries the concurrency mode of the connection.
-	<dt><a name="maxrows"><code>maxrows([<var>intval</var>])</code></a>
+	<dt><a name="maxrows"><code>maxrows[=<var>intval</var>]</code></a>
 	<dd>Sets or queries the maximum rows for the connection.
-	<dt><a name="timeout"><code>timeout([<var>intval</var>])</code></a>
+	<dt><a name="timeout"><code>timeout[=<var>intval</var>]</code></a>
 	<dd>Sets or queries the timeout value of the connection.
-	<dt><a name="maxlength"><code>maxlength([<var>intval</var>])</code></a>
+	<dt><a name="maxlength"><code>maxlength[=<var>intval</var>]</code></a>
 	<dd>Sets or queries the maximum length for the connection.
 	<dt><a name="rowsetsize">
-	    <code>rowsetsize([<var>intval</var>])</code></a>
+	    <code>rowsetsize[=<var>intval</var>]</code></a>
 	<dd>Sets or queries the row set size option of the connection.
 	<dt><a name="cursortype">
-	    <code>cursortype([<var>intval</var>])</code></a>
+	    <code>cursortype[=<var>intval</var>]</code></a>
 	<dd>Sets or queries the cursor behaviour of the connection.
-	<dt><a name="noscan"><code>noscan([<var>bool</var>])</code></a>
+	<dt><a name="noscan"><code>noscan[=<var>bool</var>]</code></a>
 	<dd>Sets or queries the noscan option of the connection.
 	<dt><a name="drop_all"><code>drop_all</code></a>
 	<dd>Releases the resources of all open
@@ -378,7 +378,10 @@ addcust.call("J.R. User", 9999)
       The <a href="#run">run</a>, <a href="#prepare">prepare</a>,
       <a href="#do">do</a>, and info methods (eg <a href="#tables">tables</a>)
       can be invoked with a block. In this case the block is executed with
-      the <a href="#ODBC::Statement">ODBC::Statement</a> as parameter.
+      the <a href="#ODBC::Statement">ODBC::Statement</a> as parameter. The
+      <a href="#run">run</a> and <a href="#do">do</a> methods use the ODBC API
+      function <code>SQLExecDirect()</code> when the SQL statement has no
+      parameters.
     </div>
     <hr>
     <div>
@@ -433,7 +436,9 @@ addcust.call("J.R. User", 9999)
 	<dd>Returns a hash of column information keyed by column names
 	  (Strings) of the query result. If <var>as_ary</var> is true,
 	  an array is returned. In both cases the elements are
-	  <a href="#ODBC::Column">ODBC::Column</a>s.
+	  <a href="#ODBC::Column">ODBC::Column</a>s. If the hash keys
+	  happen to be not unique later columns get their column number
+	  appended, e.g. <code>FOOBAR</code>, <code>FOOBAR#1</code>.
 	<dt><a name="columns2"><code>columns
 	  {|<var>col</var>| <var>block</var>}</code></a>
 	<dd>Iterates over the columns of the query result with <var>col</var>
@@ -442,6 +447,8 @@ addcust.call("J.R. User", 9999)
 	<dd>Returns the number of columns of the query result.
 	<dt><a name="nrows"><code>nrows</code></a>
 	<dd>Returns the number of rows of the query result.
+	<dt><a name="cursorname"><code>cursorname[=<var>name</var>]</code></a>
+	<dd>Returns or sets the cursor name of the statement.
 	<dt><a name="fetch"><code>fetch</code></a>
 	<dd>Returns the next row of the query result as an array.
 	<dt><a name="fetch_first"><code>fetch_first</code></a>
@@ -462,7 +469,9 @@ addcust.call("J.R. User", 9999)
 	    <code>fetch_hash(<var>with_table_names=false</var>)</code></a>
 	<dd>Returns the next row of the query result as a hash keyed by
 	  column names. If <var>with_table_names</var> is true,
-	  the keys are combined table/column names.
+	  the keys are combined table/column names. For uniqueness of keys
+	  the same rules as in the <a href="#columns1"><code>columns</code></a>
+	  method are applied.
 	<dt><a name="each"><code>each {|<var>row</var>|
 	      <var>block</var>}</code></a>
 	<dd>Iterates over the query result, performing a <code>fetch</code>
@@ -484,6 +493,10 @@ addcust.call("J.R. User", 9999)
       <code>fetch_hash</code>) or with the
       <a href="#ODBC::Statement">ODBC::Statement</a> (<code>execute</code>)
       as parameter.
+      <p>If the underlying ODBC driver reports case-insensitive identifiers
+      during connection setup all column names used in the <code>column</code>,
+      <code>columns</code>, and <code>*_hash</code> methods are converted to
+      upper case.
     </div>
     <hr>
     <div>

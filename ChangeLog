@@ -1,6 +1,19 @@
 ODBC binding for Ruby
 ---------------------
 
+Sat Aug 25 2001 version 0.91 released
+
+	* handle non-unique keys in column name/result set hashes
+	  by appending "#column-number" string
+	* convert column names to uppercase if ODBC driver is
+	  identifier case insensitive as suggested by
+	  Elmar Sonnenschein <eso@esomail.de>
+	* added cursorname method in Statement
+	* added assignment methods for Environment/Database/Statement
+	  options
+	* taint strings
+	* use SQLExecDirect() in Statement.run/do when no parameters in query
+
 Wed Aug 15 2001 version 0.9 released
 
 	* doc updated

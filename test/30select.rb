@@ -1,7 +1,7 @@
 $q = $c.prepare("select id,str from test")
 
-if $q.column(0).name != "id" then raise "fetch failed" end
-if $q.column(1).name != "str" then raise "fetch failed" end
+if $q.column(0).name.upcase != "ID" then raise "fetch failed" end
+if $q.column(1).name.upcase != "STR" then raise "fetch failed" end
 
 $q.execute
 if $q.fetch != [1, "foo"] then raise "fetch: failed" end
