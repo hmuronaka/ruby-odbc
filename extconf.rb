@@ -18,7 +18,16 @@ dir_config("odbc")
 have_header("sql.h")
 have_header("sqlext.h")
 begin
-  have_type("SQLTCHAR", "sqltypes.h")
+  if PLATFORM !~ /(mingw|cygwin)/ then
+    header = "sqltypes.h"
+  else
+    header = ["windows.h", "sqltypes.h"]
+  end
+  if defined? have_type
+    have_type("SQLTCHAR", header)
+  else
+    throw
+  end
 rescue
   puts "WARNING: please check sqltypes.h for SQLTCHAR manually,"
   puts "WARNING: if defined, modify CFLAGS in Makefile to contain"

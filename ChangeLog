@@ -1,6 +1,13 @@
 ODBC binding for Ruby
 ---------------------
 
+Wed Jul 14 version 0.994 released
+
+	* fixed ODBC::Database.new|connect so that 
+	  ODBC::Database.new.drvconnect(string) works
+	* fixed SQLTCHAR detect for Win32 in extconf.rb,
+	  thanks to Pedro Luis Castedo Cepeda
+
 Mon Jun 28 2004 version 0.993 released
 
 	* use HAVE_TYPE_SQLTCHAR from extconf.rb for old iODBC versions

@@ -6,7 +6,7 @@
  * and redistribution of this file and for a
  * DISCLAIMER OF ALL WARRANTIES.
  *
- * $Id: odbc.c,v 1.33 2004/06/28 20:25:48 chw Exp chw $
+ * $Id: odbc.c,v 1.34 2004/07/14 06:56:10 chw Exp chw $
  */
 
 #undef ODBCVER
@@ -1425,11 +1425,13 @@ dbc_connect(int argc, VALUE *argv, VALUE self)
     char *msg;
     SQLHDBC dbc;
 
-    rb_scan_args(argc, argv, "12", &dsn, &user, &passwd);
-    if (rb_obj_is_kind_of(dsn, Cdsn) == Qtrue) {
-	dsn = rb_iv_get(dsn, "@name");
+    rb_scan_args(argc, argv, "03", &dsn, &user, &passwd);
+    if (dsn != Qnil) {
+	if (rb_obj_is_kind_of(dsn, Cdsn) == Qtrue) {
+	    dsn = rb_iv_get(dsn, "@name");
+	}
+	Check_Type(dsn, T_STRING);
     }
-    Check_Type(dsn, T_STRING);
     if (user != Qnil) {
 	Check_Type(user, T_STRING);
     }
@@ -1446,6 +1448,9 @@ dbc_connect(int argc, VALUE *argv, VALUE self)
 	link_dbc(p, e);
     } else {
 	e = get_env(p->env);
+    }
+    if (dsn == Qnil) {
+	return self;
     }
 #ifdef UNICODE
     if (user != Qnil) {
