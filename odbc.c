@@ -16,10 +16,10 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * $Id: odbc.c,v 1.9 2001/06/12 05:14:33 chw Exp chw $
+ * $Id: odbc.c,v 1.10 2001/06/19 19:37:55 chw Exp chw $
  */
 
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__CYGWIN32__) || defined(__MINGW32__)
 #include <windows.h>
 #endif
 #include "ruby.h"
@@ -55,6 +55,7 @@ typedef struct {
     SQLSMALLINT type;
     SQLUINTEGER coldef;
     SQLSMALLINT scale;
+    SQLINTEGER rlen;
     SQLSMALLINT nullable;
     char buffer[32];
 } PINFO;
@@ -120,6 +121,8 @@ static VALUE rb_cDate;
 #define DOFETCH_ARY   0
 #define DOFETCH_HASH  1
 #define DOFETCH_HASH2 2
+#define DOFETCH_MODES 3
+#define DOFETCH_BANG  8
 
 /*
  * Size of segment when SQL_NO_TOTAL
@@ -239,6 +242,18 @@ free_stmt_sub(STMT *q)
     if (q->dbufs) {
 	xfree(q->dbufs);
 	q->dbufs = NULL;
+    }
+    if (q->self != Qnil) {
+	VALUE v;
+
+	v = rb_iv_get(q->self, "@_a");
+	if (v != Qnil) {
+	    rb_ary_clear(v);
+	}
+	v = rb_iv_get(q->self, "@_h");
+	if (v != Qnil) {
+	    rb_iv_set(q->self, "@_h", rb_hash_new());
+	}
     }
 }
 
@@ -1026,6 +1041,8 @@ make_result(VALUE dbc, SQLHSTMT hstmt, VALUE result, int mode)
 	q->coltypes = NULL;
 	q->colnames = q->dbufs = NULL;
 	rb_hash_aset(p->stmts, q->self, q->self);
+	rb_iv_set(q->self, "@_a", rb_ary_new());
+	rb_iv_set(q->self, "@_h", rb_hash_new());
     } else {
 	Data_Get_Struct(result, STMT, q);
 	free_stmt_sub(q);
@@ -2383,7 +2400,7 @@ do_fetch(STMT *q, int mode)
 	    }
 	}
     }
-    switch (mode) {
+    switch (mode & DOFETCH_MODES) {
     case DOFETCH_HASH:
     case DOFETCH_HASH2:
 	if (q->colnames == NULL) {
@@ -2429,10 +2446,28 @@ do_fetch(STMT *q, int mode)
 	    }
 	    q->colnames = na;
 	}
-	res = rb_hash_new();
+	if (mode & DOFETCH_BANG) {
+	    res = rb_iv_get(q->self, "@_h");
+	    if (res == Qnil) {
+		res = rb_hash_new();
+		rb_iv_set(q->self, "@_h", res);
+	    }
+	} else {
+	    res = rb_hash_new();
+	}
 	break;
     default:
-	res = rb_ary_new2(q->ncols);
+	if (mode & DOFETCH_BANG) {
+	    res = rb_iv_get(q->self, "@_a");
+	    if (res == Qnil) {
+		res = rb_ary_new2(q->ncols);
+		rb_iv_set(q->self, "@_a", res);
+	    } else {
+		rb_ary_clear(res);
+	    }
+	} else {
+	    res = rb_ary_new2(q->ncols);
+	}
     }
     for (i = 0; i < q->ncols; i++) {
 	SQLINTEGER curlen;
@@ -2532,7 +2567,7 @@ do_fetch(STMT *q, int mode)
 	if (freep) {
 	    xfree(freep);
 	}
-	switch (mode) {
+	switch (mode & DOFETCH_MODES) {
 	case DOFETCH_HASH:
 	    rb_hash_aset(res, rb_str_new2(q->colnames[i]), v);
 	    break;
@@ -2547,7 +2582,7 @@ do_fetch(STMT *q, int mode)
 }
 
 static VALUE
-stmt_fetch1(VALUE self)
+stmt_fetch1(VALUE self, int bang)
 {
     STMT *q;
 
@@ -2559,7 +2594,7 @@ stmt_fetch1(VALUE self)
     case SQL_NO_DATA:
 	return Qnil;
     case SQL_SUCCESS:
-	return do_fetch(q, DOFETCH_ARY);
+	return do_fetch(q, DOFETCH_ARY | (bang ? DOFETCH_BANG : 0));
     }
     rb_raise(Cerror, get_err(NULL, NULL, q->hstmt));
     return Qnil;
@@ -2571,11 +2606,20 @@ stmt_fetch(VALUE self)
     if (rb_block_given_p()) {
 	return stmt_each(self);
     }
-    return stmt_fetch1(self);
+    return stmt_fetch1(self, 0);
 }
 
 static VALUE
-stmt_fetch_first(VALUE self)
+stmt_fetch_bang(VALUE self)
+{
+    if (rb_block_given_p()) {
+	return stmt_each(self);
+    }
+    return stmt_fetch1(self, 1);
+}
+
+static VALUE
+stmt_fetch_first1(VALUE self, int bang)
 {
     STMT *q;
 
@@ -2587,14 +2631,26 @@ stmt_fetch_first(VALUE self)
     case SQL_NO_DATA:
 	return Qnil;
     case SQL_SUCCESS:
-	return do_fetch(q, DOFETCH_ARY);
+	return do_fetch(q, DOFETCH_ARY | (bang ? DOFETCH_BANG : 0));
     }
     rb_raise(Cerror, get_err(NULL, NULL, q->hstmt));
     return Qnil;
 }
 
 static VALUE
-stmt_fetch_scroll(int argc, VALUE *argv, VALUE self)
+stmt_fetch_first(VALUE self)
+{
+    return stmt_fetch_first1(self, 0);
+}
+
+static VALUE
+stmt_fetch_first_bang(VALUE self)
+{
+    return stmt_fetch_first1(self, 1);
+}
+
+static VALUE
+stmt_fetch_scroll1(int argc, VALUE *argv, VALUE self, int bang)
 {
     STMT *q;
     VALUE dir, offs;
@@ -2613,10 +2669,49 @@ stmt_fetch_scroll(int argc, VALUE *argv, VALUE self)
     case SQL_NO_DATA:
 	return Qnil;
     case SQL_SUCCESS:
-	return do_fetch(q, DOFETCH_ARY);
+	return do_fetch(q, DOFETCH_ARY | (bang ? DOFETCH_BANG : 0));
     }
     rb_raise(Cerror, get_err(NULL, NULL, q->hstmt));
     return Qnil;
+}
+
+static VALUE
+stmt_fetch_scroll(int argc, VALUE *argv, VALUE self)
+{
+    return stmt_fetch_scroll1(argc, argv, self, 0);
+}
+
+static VALUE
+stmt_fetch_scroll_bang(int argc, VALUE *argv, VALUE self)
+{
+    return stmt_fetch_scroll1(argc, argv, self, 1);
+}
+
+static VALUE
+stmt_fetch_many(VALUE self, VALUE arg)
+{
+    int i, max, all = arg == Qnil;
+    VALUE res;
+
+    if (!all) {
+	max = NUM2INT(arg);
+    }
+    res = rb_ary_new();
+    for (i = 0; all || i < max; i++) {
+	VALUE v = stmt_fetch1(self, 0);
+
+	if (v == Qnil) {
+	    break;
+	}
+	rb_ary_push(res, v);
+    }
+    return i == 0 ? Qnil : res;
+}
+
+static VALUE
+stmt_fetch_all(VALUE self)
+{
+    return stmt_fetch_many(self, Qnil);
 }
 
 static int
@@ -2629,7 +2724,7 @@ stmt_hash_mode(int argc, VALUE *argv, VALUE self)
 }
 
 static VALUE
-stmt_fetch_hash1(int argc, VALUE *argv, VALUE self)
+stmt_fetch_hash1(int argc, VALUE *argv, VALUE self, int bang)
 {
     STMT *q;
     int mode = stmt_hash_mode(argc, argv, self);
@@ -2642,7 +2737,7 @@ stmt_fetch_hash1(int argc, VALUE *argv, VALUE self)
     case SQL_NO_DATA:
 	return Qnil;
     case SQL_SUCCESS:
-	return do_fetch(q, mode);
+	return do_fetch(q, mode | (bang ? DOFETCH_BANG : 0));
     }
     rb_raise(Cerror, get_err(NULL, NULL, q->hstmt));
     return Qnil;
@@ -2654,11 +2749,20 @@ stmt_fetch_hash(int argc, VALUE *argv, VALUE self)
     if (rb_block_given_p()) {
 	return stmt_each_hash(argc, argv, self);
     }
-    return stmt_fetch_hash1(argc, argv, self);
+    return stmt_fetch_hash1(argc, argv, self, 0);
 }
 
 static VALUE
-stmt_fetch_first_hash(int argc, VALUE *argv, VALUE self)
+stmt_fetch_hash_bang(int argc, VALUE *argv, VALUE self)
+{
+    if (rb_block_given_p()) {
+	return stmt_each_hash(argc, argv, self);
+    }
+    return stmt_fetch_hash1(argc, argv, self, 1);
+}
+
+static VALUE
+stmt_fetch_first_hash1(int argc, VALUE *argv, VALUE self, int bang)
 {
     STMT *q;
     int mode = stmt_hash_mode(argc, argv, self);
@@ -2671,10 +2775,16 @@ stmt_fetch_first_hash(int argc, VALUE *argv, VALUE self)
     case SQL_NO_DATA:
 	return Qnil;
     case SQL_SUCCESS:
-	return do_fetch(q, mode);
+	return do_fetch(q, mode | (bang ? DOFETCH_BANG : 0));
     }
     rb_raise(Cerror, get_err(NULL, NULL, q->hstmt));
     return Qnil;
+}
+
+static VALUE
+stmt_fetch_first_hash(int argc, VALUE *argv, VALUE self)
+{
+    return stmt_fetch_first_hash1(argc, argv, self, 0);
 }
 
 static VALUE
@@ -2693,8 +2803,8 @@ stmt_each(VALUE self)
     default:
 	first = 0;
     }
-    while ((row = first ? stmt_fetch_first(self) :
-			  stmt_fetch1(self)) != Qnil) {
+    while ((row = first ? stmt_fetch_first1(self, 0) :
+			  stmt_fetch1(self, 0)) != Qnil) {
 	first = 0;
 	rb_yield(row);
     }
@@ -2719,8 +2829,8 @@ stmt_each_hash(int argc, VALUE *argv, VALUE self)
     default:
 	first = 0;
     }
-    while ((row = first ? stmt_fetch_first_hash(1, &withtab, self) :
-			  stmt_fetch_hash1(1, &withtab, self)) != Qnil) {
+    while ((row = first ? stmt_fetch_first_hash1(1, &withtab, self, 0) :
+			  stmt_fetch_hash1(1, &withtab, self, 0)) != Qnil) {
 	first = 0;
 	rb_yield(row);
     }
@@ -2864,6 +2974,7 @@ stmt_exec_int(int argc, VALUE *argv, VALUE self, int mode)
 	}
 	stype = q->pinfo[i].type;
 	coldef = q->pinfo[i].coldef;
+	q->pinfo[i].rlen = rlen;
 	if (coldef == 0) {
 	    switch (ctype) {
 	    case SQL_C_LONG:
@@ -2891,17 +3002,16 @@ stmt_exec_int(int argc, VALUE *argv, VALUE self, int mode)
 	}
 	if (SQLBindParameter(q->hstmt, (SQLUSMALLINT) (i + 1), SQL_PARAM_INPUT,
 			     ctype, stype, coldef, q->pinfo[i].scale,
-			     valp, vlen, &rlen) == SQL_ERROR) {
+			     valp, vlen, &q->pinfo[i].rlen) == SQL_ERROR) {
 	    goto error;
 	}
     }
     for (; i < q->nump; i++) {
-	SQLINTEGER isnull = SQL_NULL_DATA;
-
+	q->pinfo[i].rlen = SQL_NULL_DATA;
 	if (SQLBindParameter(q->hstmt, (SQLUSMALLINT) (i + 1), SQL_PARAM_INPUT,
 			     SQL_C_CHAR, q->pinfo[i].type,
 			     q->pinfo[i].coldef, q->pinfo[i].scale,
-			     NULL, 0, &isnull) == SQL_ERROR) {
+			     NULL, 0, &q->pinfo[i].rlen) == SQL_ERROR) {
 	    goto error;
 	}
     }
@@ -3394,9 +3504,15 @@ Init_odbc()
     rb_define_method(Cstmt, "ncols", stmt_ncols, 0);
     rb_define_method(Cstmt, "nrows", stmt_nrows, 0);
     rb_define_method(Cstmt, "fetch", stmt_fetch, 0);
+    rb_define_method(Cstmt, "fetch!", stmt_fetch_bang, 0);
     rb_define_method(Cstmt, "fetch_first", stmt_fetch_first, 0);
+    rb_define_method(Cstmt, "fetch_first!", stmt_fetch_first_bang, 0);
     rb_define_method(Cstmt, "fetch_scroll", stmt_fetch_scroll, -1);
+    rb_define_method(Cstmt, "fetch_scroll!", stmt_fetch_scroll_bang, -1);
     rb_define_method(Cstmt, "fetch_hash", stmt_fetch_hash, -1);
+    rb_define_method(Cstmt, "fetch_hash!", stmt_fetch_hash_bang, -1);
+    rb_define_method(Cstmt, "fetch_many", stmt_fetch_many, 1);
+    rb_define_method(Cstmt, "fetch_all", stmt_fetch_all, 0);
     rb_define_method(Cstmt, "each", stmt_each, 0);
     rb_define_method(Cstmt, "each_hash", stmt_each_hash, -1);
     rb_define_method(Cstmt, "execute", stmt_exec, -1);

@@ -1,6 +1,15 @@
 ODBC binding for Ruby
 ---------------------
 
+Wed Jun 20 2001 version 0.7 released
+
+	* minor doc update
+	* some more test cases in fetching data
+	* added some more fetch methods (fetch_many, fetch_all ...)
+	* added more tests for conditional include of <windows.h>
+	* again, fixes in parameter binding thanks to patches from
+	  Steve Tuckner <sat@multitech.com>
+
 Tue Jun 12 2001 version 0.6 released
 
 	* reviewed parameter and column information handling

@@ -10,10 +10,20 @@ if $q.fetch != [3, "FOO"] then raise "fetch: failed" end
 if $q.fetch != [4, "BAR"] then raise "fetch: failed" end
 if $q.fetch != nil then raise "fetch: failed" end
 $q.close
+
 if $q.execute.entries != [[1, "foo"], [2, "bar"], [3, "FOO"], [4, "BAR"]] then
   raise "fetch: failed"
 end
 
+if $q.execute.fetch_all != [[1, "foo"], [2, "bar"], [3, "FOO"], [4, "BAR"]] then
+  raise "fetch: failed"
+end
+
+$q.execute
+if $q.fetch_many(2) != [[1, "foo"], [2, "bar"]] then raise "fetch: failed" end
+if $q.fetch_many(3) != [[3, "FOO"], [4, "BAR"]] then raise "fetch: failed" end
+if $q.fetch_many(99) != nil then raise "fetch: failed" end
+$q.close
 
 a = []
 $q.execute {|r| a=r.entries}

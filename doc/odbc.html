@@ -27,7 +27,7 @@
   <body>
     <h1><a name="reference">Ruby ODBC Reference</a></h1>
     <div class = "lastmodifed">
-      Last update: Sun, 10 June 2001
+      Last update: Tue, 19 June 2001
     </div>
     <hr>
     <div>
@@ -417,6 +417,12 @@ addcust.call("J.R. User", 9999)
 	  <code>SQL_FETCH_LAST</code> as an array. <var>offset</var> is
 	  used for <code>SQL_FETCH_RELATIVE</code> and
 	  <code>SQL_FETCH_ABSOLUTE</code>.
+	<dt><a name="fetch_many"><code>fetch_many(<var>count</var>)</code></a>
+	<dd>Returns an array of the next <var>count</var> rows of the query
+	  result, where each row is an array.
+	<dt><a name="fetch_all"><code>fetch_all</code></a>
+	<dd>Same as <code>fetch_many</code> except that all remaining rows
+	  are returned.
 	<dt><a name="fetch_hash">
 	    <code>fetch_hash(<var>with_table_names</var>)</code></a>
 	<dd>Returns the next row of the query result as a hash keyed by
