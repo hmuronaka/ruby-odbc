@@ -14,10 +14,12 @@ $q.close
 if $q.execute.entries != [[1, "foo"], [2, "bar"], [3, "FOO"], [4, "BAR"]] then
   raise "fetch: failed"
 end
+$q.close
 
 if $q.execute.fetch_all != [[1, "foo"], [2, "bar"], [3, "FOO"], [4, "BAR"]] then
   raise "fetch: failed"
 end
+$q.close
 
 $q.execute
 if $q.fetch_many(2) != [[1, "foo"], [2, "bar"]] then raise "fetch: failed" end
@@ -28,11 +30,14 @@ $q.close
 a = []
 $q.execute {|r| a=r.entries}
 if a.size != 4 then raise "fetch: failed" end
+$q.close
 
 a = []
 $q.execute.each {|r| a.push(r)}
 if a.size != 4 then raise "fetch: failed" end
+$q.close
 
 a = []
 $q.execute.each_hash {|r| a.push(r)}
 if a.size != 4 then raise "fetch: failed" end
+$q.close

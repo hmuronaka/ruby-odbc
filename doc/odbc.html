@@ -27,7 +27,7 @@
   <body>
     <h1><a name="reference">Ruby ODBC Reference</a></h1>
     <div class = "lastmodifed">
-      Last update: Thu, 11 October 2001
+      Last update: Sun, 12 May 2002
     </div>
     <hr>
     <div>
@@ -517,6 +517,10 @@ addcust.call("J.R. User", 9999)
 	  <code>fetch_hash</code> for each row.
 	<dt><a name="execute"><code>execute([<var>args ...</var>])</code></a>
 	<dd>Binds <var>args</var> to current query and executes it.
+	<dt><a name="more_results"><code>more_results</code></a>
+	<dd>Returns true and switches over to the next result set,
+	  if the query produced more than one result set. Otherwise
+	  returns false.
       </dl>
       <h3>Remarks:</h3>
       The <code><a href="#fetch">fetch</a></code>,

@@ -1,6 +1,6 @@
 /*
  * ODBC-Ruby binding
- * Copyright (C) 2001 Christian Werner
+ * Copyright (C) 2001-2002 Christian Werner
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * $Id: odbc.c,v 1.20 2001/10/11 11:09:33 chw Exp chw $
+ * $Id: odbc.c,v 1.22 2002/05/12 10:37:54 chw Exp chw $
  */
 
 #undef ODBCVER
@@ -310,7 +310,7 @@ free_env(ENV *e)
 		 SQLFreeEnv(e->henv), "SQLFreeEnv");
 	e->henv = SQL_NULL_HENV;
     }
-    free(e);
+    xfree(e);
 }
 
 static void
@@ -354,7 +354,7 @@ free_dbc(DBC *p)
 	p->hdbc = SQL_NULL_HDBC;
     }
     unlink_dbc(p);
-    free(p);
+    xfree(p);
 }
 
 static void
@@ -429,7 +429,7 @@ free_stmt(STMT *q)
 	q->hstmt = SQL_NULL_HSTMT;
     }
     unlink_stmt(q);
-    free(q);
+    xfree(q);
 }
 
 static void
@@ -1671,9 +1671,9 @@ dbc_info(int argc, VALUE *argv, VALUE self, int mode)
     case INFO_INDEXES:
 	if (!succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, hstmt,
 		       SQLStatistics(hstmt, NULL, 0, NULL, 0,
-				     swhich, SQL_NTS,
-				     RTEST(which2) ?
-				     SQL_INDEX_UNIQUE : SQL_INDEX_ALL,
+				     swhich, SQL_NTS, (SQLUSMALLINT)
+				     (RTEST(which2) ?
+				      SQL_INDEX_UNIQUE : SQL_INDEX_ALL),
 				     SQL_ENSURE), "SQLStatistics")) {
 	    goto error;
 	}
@@ -1720,9 +1720,11 @@ dbc_info(int argc, VALUE *argv, VALUE self, int mode)
 	break;
     case INFO_SPECCOLS:
 	if (!succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, hstmt,
-		       SQLSpecialColumns(hstmt, iid, NULL, 0, NULL, 0,
+		       SQLSpecialColumns(hstmt, (SQLUSMALLINT) iid,
+					 NULL, 0, NULL, 0,
 					 swhich, SQL_NTS,
-					 iscope, SQL_NULLABLE),
+					 (SQLUSMALLINT) iscope,
+					 SQL_NULLABLE),
 					 "SQLSpecialColumns")) {
 	    goto error;
 	}
@@ -2167,7 +2169,7 @@ static VALUE
 date_new(int argc, VALUE *argv, VALUE self)
 {
     DATE_STRUCT *date;
-    VALUE obj = Data_Make_Struct(self, DATE_STRUCT, 0, free, date);
+    VALUE obj = Data_Make_Struct(self, DATE_STRUCT, 0, xfree, date);
     
     rb_obj_call_init(obj, argc, argv);
     return obj;
@@ -2183,7 +2185,7 @@ date_load1(VALUE self, VALUE str, int load)
 	VALUE obj;
 
 	if (load) {
-	    obj = Data_Make_Struct(self, DATE_STRUCT, 0, free, date);
+	    obj = Data_Make_Struct(self, DATE_STRUCT, 0, xfree, date);
 	} else {
 	    obj = self;
 	    Data_Get_Struct(self, DATE_STRUCT, date);
@@ -2380,7 +2382,7 @@ static VALUE
 time_new(int argc, VALUE *argv, VALUE self)
 {
     TIME_STRUCT *time;
-    VALUE obj = Data_Make_Struct(self, TIME_STRUCT, 0, free, time);
+    VALUE obj = Data_Make_Struct(self, TIME_STRUCT, 0, xfree, time);
     
     rb_obj_call_init(obj, argc, argv);
     return obj;
@@ -2396,7 +2398,7 @@ time_load1(VALUE self, VALUE str, int load)
 	VALUE obj;
        
 	if (load) {
-	    obj = Data_Make_Struct(self, TIME_STRUCT, 0, free, time);
+	    obj = Data_Make_Struct(self, TIME_STRUCT, 0, xfree, time);
 	} else {
 	    obj = self;
 	    Data_Get_Struct(self, TIME_STRUCT, time);
@@ -2586,7 +2588,7 @@ static VALUE
 timestamp_new(int argc, VALUE *argv, VALUE self)
 {
     TIMESTAMP_STRUCT *ts;
-    VALUE obj = Data_Make_Struct(self, TIMESTAMP_STRUCT, 0, free, ts);
+    VALUE obj = Data_Make_Struct(self, TIMESTAMP_STRUCT, 0, xfree, ts);
 
     rb_obj_call_init(obj, argc, argv);
     return obj;
@@ -2602,7 +2604,7 @@ timestamp_load1(VALUE self, VALUE str, int load)
 	VALUE obj;
 
 	if (load) {
-	    obj = Data_Make_Struct(self, TIMESTAMP_STRUCT, 0, free, ts);
+	    obj = Data_Make_Struct(self, TIMESTAMP_STRUCT, 0, xfree, ts);
 	} else {
 	    obj = self;
 	    Data_Get_Struct(self, TIMESTAMP_STRUCT, ts);
@@ -3316,7 +3318,7 @@ do_fetch(STMT *q, int mode)
 		{
 		    DATE_STRUCT *date;
 
-		    v = Data_Make_Struct(Cdate, DATE_STRUCT, 0, free, date);
+		    v = Data_Make_Struct(Cdate, DATE_STRUCT, 0, xfree, date);
 		    *date = *(DATE_STRUCT *) valp;
 		}
 		break;
@@ -3324,7 +3326,7 @@ do_fetch(STMT *q, int mode)
 		{
 		    TIME_STRUCT *time;
 
-		    v = Data_Make_Struct(Ctime, TIME_STRUCT, 0, free, time);
+		    v = Data_Make_Struct(Ctime, TIME_STRUCT, 0, xfree, time);
 		    *time = *(TIME_STRUCT *) valp;
 		}
 		break;
@@ -3333,7 +3335,7 @@ do_fetch(STMT *q, int mode)
 		    TIMESTAMP_STRUCT *ts;
 
 		    v = Data_Make_Struct(Ctimestamp, TIMESTAMP_STRUCT,
-					 0, free, ts);
+					 0, xfree, ts);
 		    *ts = *(TIMESTAMP_STRUCT *) valp;
 		}
 		break;
@@ -3386,8 +3388,8 @@ stmt_fetch1(VALUE self, int bang)
     msg = "SQLExtendedFetch(SQL_FETCH_NEXT)";
     ret = SQLExtendedFetch(q->hstmt, SQL_FETCH_NEXT, 0, &nRows, rowStat);
 #else
-    msg = "SQLFetch";
-    ret = SQLFetch(q->hstmt);
+    msg = "SQLFetchScroll(SQL_FETCH_NEXT)";
+    ret = SQLFetchScroll(q->hstmt, SQL_FETCH_NEXT, 0);
 #endif
     if (ret == SQL_NO_DATA) {
 	(void) tracesql(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt, ret, msg);
@@ -3572,8 +3574,8 @@ stmt_fetch_hash1(int argc, VALUE *argv, VALUE self, int bang)
     msg = "SQLExtendedFetch(SQL_FETCH_NEXT)";
     ret = SQLExtendedFetch(q->hstmt, SQL_FETCH_NEXT, 0, &nRows, rowStat);
 #else
-    msg = "SQLFetch";
-    ret = SQLFetch(q->hstmt);
+    msg = "SQLFetchScroll(SQL_FETCH_NEXT)";
+    ret = SQLFetchScroll(q->hstmt, SQL_FETCH_NEXT, 0);
 #endif
     if (ret == SQL_NO_DATA) {
 	(void) tracesql(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt, ret, msg);
@@ -3722,6 +3724,33 @@ stmt_each_hash(int argc, VALUE *argv, VALUE self)
 	rb_yield(row);
     }
     return self;
+}
+
+static VALUE
+stmt_more_results(VALUE self)
+{
+    STMT *q;
+
+    if (rb_block_given_p()) {
+	rb_raise(rb_eArgError, "block not allowed");
+    }
+    Data_Get_Struct(self, STMT, q);
+    if (q->hstmt == SQL_NULL_HSTMT) {
+	return Qfalse;
+    }
+    switch (tracesql(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt,
+		     SQLMoreResults(q->hstmt), "SQLMoreResults")) {
+    case SQL_NO_DATA:
+	return Qfalse;
+    case SQL_SUCCESS:
+    case SQL_SUCCESS_WITH_INFO:
+	make_result(q->dbc, q->hstmt, self, 0);
+	break;
+    default:
+	rb_raise(Cerror, "%s",
+		 get_err(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt));
+    }
+    return Qtrue;
 }
 
 static VALUE
@@ -3963,7 +3992,8 @@ stmt_run(int argc, VALUE *argv, VALUE self)
 	rb_raise(rb_eArgError, "wrong # of arguments");
     }
     if (argc == 1) {
-	return stmt_prep_int(1, argv, self, MAKERES_EXECD);
+	return stmt_prep_int(1, argv, self,
+			     MAKERES_EXECD | MAKERES_BLOCK);
     }
     return stmt_exec(argc - 1, argv + 1, stmt_prep_int(1, argv, self, 0));
 }
@@ -4609,6 +4639,7 @@ Init_odbc()
     rb_define_method(Cstmt, "each_hash", stmt_each_hash, -1);
     rb_define_method(Cstmt, "execute", stmt_exec, -1);
     rb_define_method(Cstmt, "make_proc", stmt_procwrap, -1);
+    rb_define_method(Cstmt, "more_results", stmt_more_results, 0);
     rb_define_singleton_method(Cstmt, "make_proc", stmt_procwrap, -1);
 
     /* data type methods */

@@ -1,10 +1,10 @@
-# $Id: README,v 1.13 2001/10/11 11:10:57 chw Exp chw $
+# $Id: README,v 1.14 2002/05/12 07:31:53 chw Exp chw $
 
-ruby-odbc-0.94
+ruby-odbc-0.95
 
 This is an ODBC binding for Ruby. So far it has been tested with
 
-    - Ruby 1.6.[3-5], MySQL 3.22/MyODBC (local), unixODBC 2.0.[6-9]
+    - Ruby 1.6.[3-7], MySQL 3.22/MyODBC (local), unixODBC 2.1.0
       on Linux 2.2-x86
 
     - Ruby 1.6.4, MySQL 3.22/MyODBC (local), libiodbc 2.50
@@ -22,8 +22,8 @@ This is an ODBC binding for Ruby. So far it has been tested with
 
 Requirements:
 
-    - Ruby 1.6.[3-5]
-    - unixODBC 2.0.x or libiodbc 2.50 on UN*X 
+    - Ruby 1.6.[3-7]
+    - unixODBC 2.x or libiodbc 2.50 on UN*X 
 
 Installation:
 

@@ -1,6 +1,15 @@
 ODBC binding for Ruby
 ---------------------
 
+Mon May 13 2001 version 0.95 released
+
+	* doc updated
+	* minor code cleanups
+	* fixed ODBC::Database.run to properly accept blocks
+	  as reported by Michael Neumann <neumann@s-direktnet.de>
+	* added ODBC::Statement.more_results method as
+	  requested by Chris Morris <chris.morris@snelling.com>
+
 Thu Oct 11 2001 version 0.94 released
 
 	* doc updated
