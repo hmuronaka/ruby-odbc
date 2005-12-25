@@ -1,6 +1,14 @@
 ODBC binding for Ruby
 ---------------------
 
+Sun Dec 25 2005 version 0.997 released
+
+	* 32/64 bit issues as pointed out by Lars Kanis
+	* ODBC::Database.get_info implementation and constants, idea
+	  and initial coding contributed by Tim Haynes of OpenLink Software
+	* ODBC::Statement.param_type implemented as work around for
+	  Ingres ODBC driver. Thanks Jon Chambers for idea and testing
+
 Sun Nov 21 2004 version 0.996 released
 
 	* use SQLInstallerError() for adddsn/confdsn/deldsn if available,

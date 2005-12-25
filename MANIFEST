@@ -4,7 +4,6 @@ GPL
 MANIFEST
 README
 extconf.rb
-license.terms
 odbc.c
 test.rb
 doc/odbc.html

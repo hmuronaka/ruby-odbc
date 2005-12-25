@@ -27,7 +27,7 @@
   <body>
     <h1><a name="reference">Ruby ODBC Reference</a></h1>
     <div class = "lastmodifed">
-      Last update: Sun, 12 May 2002
+      Last update: Mon, 05 Dec 2005
     </div>
     <hr>
     <div>
@@ -47,11 +47,22 @@
         <dd>Returns the last error messages (String array) or nil.
 	  The layout of the warning/error messages
 	  is described <a href="#ODBC::Error">here</a>.
+	  Retrieving this message as well as subsequent succeeding ODBC
+	  method invocations do not clear the message. Use the
+	  <a href="#OBDC::clear_error"><code>clear_error</code></a>
+	  for that purpose.
 	<dt><a name="ODBC::info"><code>info</code></a>
 	<dd>Returns the last driver/driver manager warning messages
 	  (String array) or nil.
 	  The layout of the warning/error messages
 	  is described <a href="#ODBC::Error">here</a>.
+	  Retrieving this message as well as subsequent succeeding ODBC
+	  method invocations do not clear the message. Use the
+	  <a href="#OBDC::clear_error"><code>clear_error</code></a>
+	  for that purpose.
+	<dt><a name="ODBC::clear_error"><code>clear_error</code></a>
+	<dd>Resets the last driver/driver manager error and warning messages
+	  to nil.
 	<dt><a name="ODBC::raise"><code>raise(<var>value</var>)</code></a>
         <dd>Raises an <a href="#ODBC::Error">ODBC::Error</a> exception with
 	  String error message <var>value</var>.
@@ -62,10 +73,8 @@
         <dd>Gets or sets the process-wide connection pooling attribute.
 	<dt><a name="ODBC::to_time1">
 	    <code>to_time(<var>timestamp</var>)</code></a>
-	<dt><a name="ODBC::to_time2"><code>to_time(<var>date</var>,
-	      [<var>time</var>])</code></a>
-	<dt><a name="ODBC::to_time3"><code>to_time(<var>time</var>,
-	      [<var>date</var>])</code></a>
+	<dt><a name="ODBC::to_time2"><code>to_time(<var>date</var>,[<var>time</var>])</code></a>
+	<dt><a name="ODBC::to_time3"><code>to_time(<var>time</var>,[<var>date</var>])</code></a>
         <dd>Creates a <code>Time</code> object from the specified arguments,
           which must be <a href="#ODBC::Date">ODBC::Date</a>,
           <a href="#ODBC::Time">ODBC::Time</a>, or
@@ -76,8 +85,7 @@
         <dd>Creates a <code>Date</code> object from the specified arguments,
           which must be <a href="#ODBC::Date">ODBC::Date</a>, or
           <a href="#ODBC::TimeStamp">ODBC::TimeStamp</a> objects.
-	<dt><a name="ODBC::connect"><code>connect(<var>dsn</var>,
-	      [<var>user</var>, <var>passwd</var>])
+	<dt><a name="ODBC::connect"><code>connect(<var>dsn</var>,[<var>user</var>,<var>passwd</var>])
 	      [{|<var>dbc</var>| <var>block</var>}]</code></a>
 	<dd>If no block is specified, a connection to the given data source
 	  is established and a <a href="#ODBC::Database">ODBC::Database</a>
@@ -95,8 +103,7 @@
       <h3>constants:</h3>
       <P>
 	Some constants of the ODBC API are defined in order to set connection
-	options and to
-	deal with SQL data types:
+	options, to deal with SQL data types, and to obtain database meta data.
       </P>
       <dl>
 	<dt>Cursor behaviour:
@@ -152,6 +159,208 @@
 	  <var>SQL_CP_MATCH_DEFAULT</var>,
 	  <var>SQL_OV_ODBC2</var>,
 	  <var>SQL_OV_ODBC3</var>
+	<dt>Info types for
+          <a href=#ODBC::Database.get_info>ODBC::Database.get_info</a>
+          yielding integer results:
+	<dd><var>SQL_ACTIVE_ENVIRONMENTS</var>,
+          <var>SQL_ACTIVE_CONNECTIONS</var>,
+	  <var>SQL_ACTIVE_STATEMENTS</var>,
+	  <var>SQL_ASYNC_MODE</var>,
+	  <var>SQL_CATALOG_LOCATION</var>,
+	  <var>SQL_CONCAT_NULL_BEHAVIOR</var>,
+	  <var>SQL_CORRELATION_NAME</var>,
+	  <var>SQL_CURSOR_COMMIT_BEHAVIOR</var>,
+	  <var>SQL_CURSOR_ROLLBACK_BEHAVIOR</var>,
+	  <var>SQL_CURSOR_SENSITIVITY</var>,
+	  <var>SQL_DDL_INDEX</var>,
+	  <var>SQL_DEFAULT_TXN_ISOLATION</var>,
+	  <var>SQL_DRIVER_HDBC</var>,
+	  <var>SQL_DRIVER_HENV</var>,
+	  <var>SQL_DRIVER_HDESC</var>,
+	  <var>SQL_DRIVER_HLIB</var>,
+	  <var>SQL_DRIVER_HSTMT</var>,
+	  <var>SQL_FILE_USAGE</var>,
+	  <var>SQL_GROUP_BY</var>,
+	  <var>SQL_IDENTIFIER_CASE</var>,
+	  <var>SQL_MAX_ASYNC_CONCURRENT_STATEMENTS</var>,
+	  <var>SQL_MAX_BINARY_LITERAL_LEN</var>,
+	  <var>SQL_MAX_CATALOG_NAME_LEN</var>,
+	  <var>SQL_MAX_CHAR_LITERAL_LEN</var>,
+	  <var>SQL_MAX_COLUMN_NAME_LEN</var>,
+	  <var>SQL_MAX_COLUMNS_IN_GROUP_BY</var>,
+	  <var>SQL_MAX_COLUMNS_IN_INDEX</var>,
+	  <var>SQL_MAX_COLUMNS_IN_ORDER_BY</var>,
+	  <var>SQL_MAX_COLUMNS_IN_SELECT</var>,
+	  <var>SQL_MAX_COLUMNS_IN_TABLE</var>,
+	  <var>SQL_MAX_CONCURRENT_ACTIVITIES</var>,
+	  <var>SQL_MAX_CURSOR_NAME_LEN</var>,
+	  <var>SQL_MAX_DRIVER_CONNECTIONS</var>,
+	  <var>SQL_MAX_IDENTIFIER_LEN</var>,
+	  <var>SQL_MAX_INDEX_SIZE</var>,
+	  <var>SQL_MAX_OWNER_NAME_LEN</var>,
+	  <var>SQL_MAX_PROCEDURE_NAME_LEN</var>,
+	  <var>SQL_MAX_QUALIFIER_NAME_LEN</var>,
+	  <var>SQL_MAX_ROW_SIZE</var>,
+	  <var>SQL_MAX_SCHEMA_NAME_LEN</var>,
+	  <var>SQL_MAX_STATEMENT_LEN</var>,
+	  <var>SQL_MAX_TABLE_NAME_LEN</var>,
+	  <var>SQL_MAX_TABLES_IN_SELECT</var>,
+	  <var>SQL_MAX_USER_NAME_LEN</var>,
+	  <var>SQL_NON_NULLABLE_COLUMNS</var>,
+	  <var>SQL_NULL_COLLATION</var>,
+	  <var>SQL_ODBC_API_CONFORMANCE</var>,
+	  <var>SQL_ODBC_INTERFACE_CONFORMANCE</var>,
+	  <var>SQL_ODBC_SAG_CLI_CONFORMANCE</var>,
+	  <var>SQL_ODBC_SQL_CONFORMANCE</var>,
+	  <var>SQL_PARAM_ARRAY_ROW_COUNTS</var>,
+	  <var>SQL_PARAM_ARRAY_SELECTS</var>,
+	  <var>SQL_QUALIFIER_LOCATION</var>,
+	  <var>SQL_QUOTED_IDENTIFIER_CASE</var>,
+	  <var>SQL_SQL_CONFORMANCE</var>,
+	  <var>SQL_TXN_CAPABLE</var>
+	<dt>Info types for
+          <a href=#ODBC::Database.get_info>ODBC::Database.get_info</a>
+          yielding bitmasks (integer results):
+        <dd><var>SQL_AGGREGATE_FUNCTIONS</var>,
+          <var>SQL_ALTER_DOMAIN</var>,
+          <var>SQL_ALTER_TABLE</var>,
+          <var>SQL_BATCH_ROW_COUNT</var>,
+          <var>SQL_BATCH_SUPPORT</var>,
+          <var>SQL_BOOKMARK_PERSISTENCE</var>,
+          <var>SQL_CATALOG_USAGE</var>,
+          <var>SQL_CONVERT_BINARY</var>,
+          <var>SQL_CONVERT_BIT</var>,
+          <var>SQL_CONVERT_CHAR</var>,
+          <var>SQL_CONVERT_GUID</var>,
+          <var>SQL_CONVERT_DATE</var>,
+          <var>SQL_CONVERT_DECIMAL</var>,
+          <var>SQL_CONVERT_DOUBLE</var>,
+          <var>SQL_CONVERT_FLOAT</var>,
+          <var>SQL_CONVERT_FUNCTIONS</var>,
+          <var>SQL_CONVERT_INTEGER</var>,
+          <var>SQL_CONVERT_INTERVAL_YEAR_MONTH</var>,
+          <var>SQL_CONVERT_INTERVAL_DAY_TIME</var>,
+          <var>SQL_CONVERT_LONGVARBINARY</var>,
+          <var>SQL_CONVERT_LONGVARCHAR</var>,
+          <var>SQL_CONVERT_NUMERIC</var>,
+          <var>SQL_CONVERT_REAL</var>,
+          <var>SQL_CONVERT_SMALLINT</var>,
+          <var>SQL_CONVERT_TIME</var>,
+          <var>SQL_CONVERT_TIMESTAMP</var>,
+          <var>SQL_CONVERT_TINYINT</var>,
+          <var>SQL_CONVERT_VARBINARY</var>,
+          <var>SQL_CONVERT_VARCHAR</var>,
+          <var>SQL_CONVERT_WCHAR</var>,
+          <var>SQL_CONVERT_WLONGVARCHAR</var>,
+          <var>SQL_CONVERT_WVARCHAR</var>,
+          <var>SQL_CREATE_ASSERTION</var>,
+          <var>SQL_CREATE_CHARACTER_SET</var>,
+          <var>SQL_CREATE_COLLATION</var>,
+          <var>SQL_CREATE_DOMAIN</var>,
+          <var>SQL_CREATE_SCHEMA</var>,
+          <var>SQL_CREATE_TABLE</var>,
+          <var>SQL_CREATE_TRANSLATION</var>,
+          <var>SQL_CREATE_VIEW</var>,
+          <var>SQL_DATETIME_LITERALS</var>,
+          <var>SQL_DROP_ASSERTION</var>,
+          <var>SQL_DROP_CHARACTER_SET</var>,
+          <var>SQL_DROP_COLLATION</var>,
+          <var>SQL_DROP_DOMAIN</var>,
+          <var>SQL_DROP_SCHEMA</var>,
+          <var>SQL_DROP_TABLE</var>,
+          <var>SQL_DROP_TRANSLATION</var>,
+          <var>SQL_DROP_VIEW</var>,
+          <var>SQL_DTC_TRANSITION_COST</var>,
+          <var>SQL_DYNAMIC_CURSOR_ATTRIBUTES1</var>,
+          <var>SQL_DYNAMIC_CURSOR_ATTRIBUTES2</var>,
+          <var>SQL_FETCH_DIRECTION</var>,
+          <var>SQL_FORWARD_ONLY_CURSOR_ATTRIBUTES1</var>,
+          <var>SQL_FORWARD_ONLY_CURSOR_ATTRIBUTES2</var>,
+          <var>SQL_GETDATA_EXTENSIONS</var>,
+          <var>SQL_KEYSET_CURSOR_ATTRIBUTES1</var>,
+          <var>SQL_KEYSET_CURSOR_ATTRIBUTES2</var>,
+          <var>SQL_INDEX_KEYWORDS</var>,
+          <var>SQL_INFO_SCHEMA_VIEWS</var>,
+          <var>SQL_INSERT_STATEMENT</var>,
+          <var>SQL_LOCK_TYPES</var>,
+          <var>SQL_NUMERIC_FUNCTIONS</var>,
+          <var>SQL_OJ_CAPABILITIES</var>,
+          <var>SQL_OWNER_USAGE</var>,
+          <var>SQL_POS_OPERATIONS</var>,
+          <var>SQL_POSITIONED_STATEMENTS</var>,
+          <var>SQL_QUALIFIER_USAGE</var>,
+          <var>SQL_SCHEMA_USAGE</var>,
+          <var>SQL_SCROLL_CONCURRENCY</var>,
+          <var>SQL_SCROLL_OPTIONS</var>,
+          <var>SQL_SQL92_DATETIME_FUNCTIONS</var>,
+          <var>SQL_SQL92_FOREIGN_KEY_DELETE_RULE</var>,
+          <var>SQL_SQL92_FOREIGN_KEY_UPDATE_RULE</var>,
+          <var>SQL_SQL92_GRANT</var>,
+          <var>SQL_SQL92_NUMERIC_VALUE_FUNCTIONS</var>,
+          <var>SQL_SQL92_PREDICATES</var>,
+          <var>SQL_SQL92_RELATIONAL_JOIN_OPERATORS</var>,
+          <var>SQL_SQL92_REVOKE</var>,
+          <var>SQL_SQL92_ROW_VALUE_CONSTRUCTOR</var>,
+          <var>SQL_SQL92_STRING_FUNCTIONS</var>,
+          <var>SQL_SQL92_VALUE_EXPRESSIONS</var>,
+          <var>SQL_STANDARD_CLI_CONFORMANCE</var>,
+          <var>SQL_STATIC_CURSOR_ATTRIBUTES1</var>,
+          <var>SQL_STATIC_CURSOR_ATTRIBUTES2</var>,
+          <var>SQL_STATIC_SENSITIVITY</var>,
+          <var>SQL_STRING_FUNCTIONS</var>,
+          <var>SQL_SUBQUERIES</var>,
+          <var>SQL_SYSTEM_FUNCTIONS</var>,
+          <var>SQL_TIMEDATE_ADD_INTERVALS</var>,
+          <var>SQL_TIMEDATE_DIFF_INTERVALS</var>,
+          <var>SQL_TIMEDATE_FUNCTIONS</var>,
+          <var>SQL_TXN_ISOLATION_OPTION</var>,
+          <var>SQL_UNION</var>
+	<dt>Info types for
+          <a href=#ODBC::Database.get_info>ODBC::Database.get_info</a>
+          yielding strings:
+        <dd><var>SQL_ACCESSIBLE_PROCEDURES</var>,
+          <var>SQL_ACCESSIBLE_TABLES</var>,
+          <var>SQL_CATALOG_NAME</var>,
+          <var>SQL_CATALOG_NAME_SEPARATOR</var>,
+          <var>SQL_CATALOG_TERM</var>,
+          <var>SQL_COLLATION_SEQ</var>,
+          <var>SQL_COLUMN_ALIAS</var>,
+          <var>SQL_DATA_SOURCE_NAME</var>,
+          <var>SQL_DATA_SOURCE_READ_ONLY</var>,
+          <var>SQL_DATABASE_NAME</var>,
+          <var>SQL_DBMS_NAME</var>,
+          <var>SQL_DBMS_VER</var>,
+          <var>SQL_DESCRIBE_PARAMETER</var>,
+          <var>SQL_DM_VER</var>,
+          <var>SQL_DRIVER_NAME</var>,
+          <var>SQL_DRIVER_ODBC_VER</var>,
+          <var>SQL_DRIVER_VER</var>,
+          <var>SQL_EXPRESSIONS_IN_ORDERBY</var>,
+          <var>SQL_IDENTIFIER_QUOTE_CHAR</var>,
+          <var>SQL_INTEGRITY</var>,
+          <var>SQL_KEYWORDS</var>,
+          <var>SQL_LIKE_ESCAPE_CLAUSE</var>,
+          <var>SQL_MAX_ROW_SIZE_INCLUDES_LONG</var>,
+          <var>SQL_MULT_RESULT_SETS</var>,
+          <var>SQL_MULTIPLE_ACTIVE_TXN</var>,
+          <var>SQL_NEED_LONG_DATA_LEN</var>,
+          <var>SQL_ODBC_SQL_OPT_IEF</var>,
+          <var>SQL_ODBC_VER</var>,
+          <var>SQL_ORDER_BY_COLUMNS_IN_SELECT</var>,
+          <var>SQL_OUTER_JOINS</var>,
+          <var>SQL_OWNER_TERM</var>,
+          <var>SQL_PROCEDURE_TERM</var>,
+          <var>SQL_PROCEDURES</var>,
+          <var>SQL_QUALIFIER_NAME_SEPARATOR</var>,
+          <var>SQL_QUALIFIER_TERM</var>,
+          <var>SQL_ROW_UPDATES</var>,
+          <var>SQL_SCHEMA_TERM</var>,
+          <var>SQL_SEARCH_PATTERN_ESCAPE</var>,
+          <var>SQL_SERVER_NAME</var>,
+          <var>SQL_SPECIAL_CHARACTERS</var>,
+          <var>SQL_TABLE_TERM</var>,
+          <var>SQL_USER_NAME</var>,
+          <var>SQL_XOPEN_CLI_YEAR</var>
       </dl>
     </div>
     <hr>
@@ -165,10 +374,16 @@
       <h3>methods:</h3>
       <dl>
 	<dt><a name="ODBC::Object.error"><code>error</code></a>
-        <dd>Returns the last error message (String) or nil.
+        <dd>Returns the last error message (String) or nil. For further
+	  information see <a href="#ODBC::error"><code>ODBC::error</code></a>.
         <dt><a name="ODBC::Object.info"><code>info</code></a>
 	<dd>Returns the last driver/driver manager warning messages
 	  (String array) or nil.
+	  For further information see
+	  <a href="#ODBC::error"><code>ODBC::error</code></a>.
+	<dt><a name="ODBC::Object.clear_error"><code>clear_error</code></a>
+	<dd>Resets the last driver/driver manager error and warning messages
+	  to nil.
 	<dt><a name="ODBC::Object.raise"><code>raise(<var>value</var>)</code>
 	  </a>
         <dd>Raises an <a href="#ODBC::Error">ODBC::Error</a> exception with
@@ -178,9 +393,16 @@
       <dl>
         <dt><a name="ODBC::Object.error2"><code>error</code></a>
 	<dd>Returns the last error message (String array) or nil.
+	  For further information see
+	  <a href="#ODBC::error"><code>ODBC::error</code></a>.
         <dt><a name="ODBC::Object.info2"><code>info</code></a>
 	<dd>Returns the last driver/driver manager warning messages
 	  (String array) or nil.
+	  For further information see
+	  <a href="#ODBC::error"><code>ODBC::error</code></a>.
+	<dt><a name="ODBC::Object.clear_error2"><code>clear_error</code></a>
+	<dd>Resets the last driver/driver manager error and warning messages
+	  to nil.
 	<dt><a name="ODBC::Object.raise2"><code>raise(<var>value</var>)</code>
 	  </a>
         <dd>Raises an <a href="#ODBC::Error">ODBC::Error</a> exception with
@@ -198,7 +420,7 @@
       <code><a href="#ODBC::Object">ODBC::Object</a></code>
       <h3>methods:</h3>
       <dl>
-	<dt><a name="ODBC::Environment.connect"><code>connect</code></a>
+	<dt><a name="ODBC::Environment.connect"><code>connect(<var>dsn</var>,[<var>user</var>,<var>passwd</var>])</code></a>
         <dd>Connects to an ODBC data source and returns a
 	  <a href="#ODBC::Database">ODBC::Database</a> object.
 	  Options are:
@@ -308,8 +530,7 @@
 	<dd>Returns an <a href="#ODBC::Statement">ODBC::Statement</a>
 	  with information about stored procedures.
 	<dt><a name="special_columns">
-	  <code>special_columns([<var>table</var>[,<var>id</var>,
-	    <var>scope</var>]])</code></a>
+	  <code>special_columns([<var>table</var>[,<var>id</var>,<var>scope</var>]])</code></a>
 	<dd>Returns an <a href="#ODBC::Statement">ODBC::Statement</a>
 	  with column information
 	  of the given <var>table</var> (String) indicating the
@@ -322,14 +543,23 @@
 	  <code>ODBC::SQL_SCOPE_SESSION</code>. If omitted the
 	  defaults are <code>ODBC::SQL_BEST_ROWID</code> and
 	  <code>ODBC::SQL_SCOPE_CURROW</code>.
-	<dt><a name="run"><code>run(<var>sql</var>,
-	      [<var>args ...</var>])</code></a>
+	<dt><a name="get_info">
+	  <code>get_info(<var>info_type</var>[,<var>sql_type</var>])</code></a>
+	<dd>Retrieves database meta data according to <var>info_type</var>
+          and returns numbers or strings. <var>info_type</var> may be specified
+          as integer or string. To force interpretation of the return value
+          of the underlying ODBC function <code>SQLGetInfo()</code> as a
+          specific Ruby type the optional parameter <var>sql_type</var>
+          can be given as eg
+          <code>ODBC::SQL_SMALLINT</code> (yielding integer), 
+          <code>ODBC::SQL_INTEGER</code> (yielding integer), and
+          <code>ODBC::SQL_CHAR</code> (yielding string).
+	<dt><a name="run"><code>run(<var>sql</var>[,<var>args...</var>])</code></a>
 	<dd>Prepares and executes the query specified by <var>sql</var>
 	  with parameters bound
 	  from <var>args</var> and returns an
 	  <a href="#ODBC::Statement">ODBC::Statement</a>.
-	<dt><a name="do"><code>do(<var>sql</var>,
-	      [<var>args ...</var>])</code></a>
+	<dt><a name="do"><code>do(<var>sql</var>[,<var>args...</var>])</code></a>
 	<dd>Prepares and executes the query as in <a href="#run">run</a>,
 	  but returns the number of result rows and automatically drops
 	  the statement. Useful for SQL insert, delete, or update statements.
@@ -391,8 +621,7 @@ addcust.call("J.R. User", 9999)
 	<dt><a name="ODBC::new"><code>new</code></a>
         <dd>Creates an unconnected ODBC object, eg for a later
 	  <code>drvconnect</code> method call.
-	<dt><a name="ODBC::new2"><code>new(<var>dsn</var>,
-	      [<var>user</var>, <var>passwd</var>])</code></a>
+	<dt><a name="ODBC::new2"><code>new(<var>dsn</var>,[<var>user</var>,<var>passwd</var>])</code></a>
         <dd>Connect to an ODBC data source. Options are:
 	  <dl>
 	    <dd><var>dsn</var>: Data source name (String or
@@ -515,7 +744,7 @@ addcust.call("J.R. User", 9999)
 	      {|<var>row</var>| <var>block</var>}</code></a>
 	<dd>Iterates over the query result, performing a
 	  <code>fetch_hash</code> for each row.
-	<dt><a name="execute"><code>execute([<var>args ...</var>])</code></a>
+	<dt><a name="execute"><code>execute([<var>args...</var>])</code></a>
 	<dd>Binds <var>args</var> to current query and executes it.
 	<dt><a name="more_results"><code>more_results</code></a>
 	<dd>Returns true and switches over to the next result set,
@@ -829,29 +1058,29 @@ INTERN (1) [RubyODBC]Programmer forgot to RTFM</pre>
       <h2>Undocumented</h2>
       <h3>Use The Source, Luke!</h3>
       <P>
-	<code>ODBC::add_dsn(<var>driver</var>, <var>issys=false</var>)
+	<code>ODBC::add_dsn(<var>driver</var>,<var>issys=false</var>)
 	  </code><br>
-	<code>ODBC::add_dsn(<var>name</var>, <var>attrs</var>,
+	<code>ODBC::add_dsn(<var>name</var>,<var>attrs</var>,
 	  <var>issys=false</var>)</code><br>
-	<code>ODBC::config_dsn(<var>driver</var>, <var>issys=false</var>)
+	<code>ODBC::config_dsn(<var>driver</var>,<var>issys=false</var>)
 	  </code><br>
-	<code>ODBC::config_dsn(<var>name</var>, <var>attrs</var>,
+	<code>ODBC::config_dsn(<var>name</var>,<var>attrs</var>,
 	  <var>issys=false</var>)</code><br>
-	<code>ODBC::del_dsn(<var>driver</var>, <var>issys=false</var>)
+	<code>ODBC::del_dsn(<var>driver</var>,<var>issys=false</var>)
 	  </code><br>
-	<code>ODBC::del_dsn(<var>name</var>, <var>attrs</var>,
+	<code>ODBC::del_dsn(<var>name</var>,<var>attrs</var>,
 	  <var>issys=false</var>)</code><br>
 	<code>ODBC::trace([<var>mask</var>])</code><br>
 	<br>
 	<code>ODBC::Statement.parameter([<var>n</var>])</code><br>
 	<code>ODBC::Statement.parameters</code><br>
+	<code>ODBC::Statement.param_type(<var>n</var>[,<var>type</var>,<var>coldef</var>,<var>scale</var>])</code><br>
 	<code>ODBC::Statement.nparams</code><br>
 	<code>ODBC::Statement.fetch!</code><br>
 	<code>ODBC::Statement.fetch_first!</code><br>
 	<code>ODBC::Statement.fetch_first_hash(<var>with_table_names=false</var>)
 	  </code><br>
-	<code>ODBC::Statement.fetch_scroll!(<var>direction</var>,
-	  <var>offset=1</var>)</code><br>
+	<code>ODBC::Statement.fetch_scroll!(<var>direction</var>,<var>offset=1</var>)</code><br>
 	<code>ODBC::Statement.fetch_hash!(<var>with_table_names=false</var>)
 	  </code><br>
 	<code>ODBC::Statement.make_proc(<var>stmt</var>)</code><br><br>
