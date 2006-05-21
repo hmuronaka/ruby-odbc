@@ -1,6 +1,16 @@
 ODBC binding for Ruby
 ---------------------
 
+Sun May 21 2006 version 0.998 released
+
+	* added undocumented module methods ODBC::write_file_dsn and
+	  ODBC::read_file_dsn
+	* fixes in SQLConfigDataSource/SQLInstallerError detect/usage
+	* added statement level option handling (SQLSetStmtOption),
+	  ODBC::Database.newstmt, ODBC::Statement.prepare|run as
+	  contributed by Carl Blakeley of OpenLink Software
+	* eliminated most GCC 4.x warnings
+
 Sun Dec 25 2005 version 0.997 released
 
 	* 32/64 bit issues as pointed out by Lars Kanis

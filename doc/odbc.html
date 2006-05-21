@@ -27,7 +27,7 @@
   <body>
     <h1><a name="reference">Ruby ODBC Reference</a></h1>
     <div class = "lastmodifed">
-      Last update: Mon, 05 Dec 2005
+      Last update: Sun, 21 May 2006
     </div>
     <hr>
     <div>
@@ -38,11 +38,11 @@
       <h3>module functions:</h3>
       <dl>
       <dt><a name="ODBC::datasources"><code>datasources</code></a>
-        <dd>Returns an array of <a href="#ODBC::DSN">ODBC::DSN</a>s, ie all
+        <dd>Returns an array of <a href="#ODBC::DSN">ODBC::DSN</a>s, i.e. all
           known data source names.
 	<dt><a name="ODBC::drivers"><code>drivers</code></a>
         <dd>Returns an array of <a href="#ODBC::Driver">ODBC::Driver</a>s,
-          ie all known ODBC drivers.
+          i.e. all known ODBC drivers.
 	<dt><a name="ODBC::error"><code>error</code></a>
         <dd>Returns the last error messages (String array) or nil.
 	  The layout of the warning/error messages
@@ -361,6 +361,21 @@
           <var>SQL_TABLE_TERM</var>,
           <var>SQL_USER_NAME</var>,
           <var>SQL_XOPEN_CLI_YEAR</var>
+	<dt>Options for
+          <a href="#dbc_get_option">ODBC::Database.get_option</a>,
+          <a href="#dbc_set_option">ODBC::Database.set_option</a>,
+          <a href="#stmt_get_option">ODBC::Statement.get_option</a>,
+	  and	  
+          <a href="#stmt_set_option">ODBC::Statement.set_option</a>
+          yielding integers:
+	<dd><var>SQL_AUTOCOMMIT</var>,
+	  <var>SQL_CONCURRENCY</var>,
+	  <var>SQL_QUERY_TIMEOUT</var>,
+	  <var>SQL_MAX_ROWS</var>,
+	  <var>SQL_MAX_LENGTH</var>,
+	  <var>SQL_NOSCAN</var>,
+	  <var>SQL_ROWSET_SIZE</var>,
+	  <var>SQL_CURSOR_TYPE</var>
       </dl>
     </div>
     <hr>
@@ -490,6 +505,12 @@
 	  connection are dropped except when the <var>no_drop</var> argument
 	  is true. The method returns true when the connection was released,
 	  false otherwise.
+	<dt><a name="newstmt"><code>newstmt</code></a>
+	<dd>Returns a new <a href="#ODBC::Statement">ODBC::Statement</a>
+	 object without preparing or executing a SQL statement. This allows
+	 to use
+	 <a href="#stmt_set_option">ODBC::Statement.set_option</a>
+	 to set special options on the statement before actual execution.
 	<dt><a name="tables"><code>tables([<var>pattern</var>])</code></a>
 	<dd>Returns an <a href="#ODBC::Statement">ODBC::Statement</a> with
 	  information of all or some (<var>pattern</var> String given)
@@ -550,7 +571,7 @@
           as integer or string. To force interpretation of the return value
           of the underlying ODBC function <code>SQLGetInfo()</code> as a
           specific Ruby type the optional parameter <var>sql_type</var>
-          can be given as eg
+          can be given as e.g.
           <code>ODBC::SQL_SMALLINT</code> (yielding integer), 
           <code>ODBC::SQL_INTEGER</code> (yielding integer), and
           <code>ODBC::SQL_CHAR</code> (yielding string).
@@ -572,7 +593,7 @@
 	  <a href="#ODBCProc">ODBCProc</a> and returns that procedure.
 	  When the procedure is called, the statement is executed with
 	  the procedure's arguments bound to the statement's parameters
-	  and the statement is bound as parameter in the block, eg
+	  and the statement is bound as parameter in the block, e.g.
 	  <pre># add customer given name and id
 # and return number of affected rows
 
@@ -583,25 +604,41 @@ addcust = dbc.proc("insert into customer values(?, ?)") { |stmt|
 addcust.call("J.R. User", 9999)
 
 # alternative to call: addcust["J.R. User", 9999]</pre>
+	<dt><a name="dbc_get_option">
+	    <code>get_option(<var>option</var>)</code></a>
+	<dd>Gets a connection level option. <var>option</var> can be a
+	  module constant, e.g. <var>SQL_MAX_ROWS</var>, a number, or a
+	  string. This method returns the integer value of that option.
+	<dt><a name="dbc_set_option">
+	    <code>set_option(<var>option</var>,<var>intval</var>)</code></a>
+	<dd>Sets a connection level option. <var>option</var> can be a
+	  module constant, e.g. <var>SQL_MAX_ROWS</var>, a number, or a
+	  string. The second parameter <var>intval</var> can be used to
+	  set driver-specific statement options.
 	<dt><a name="autocommit"><code>autocommit[=<var>bool</var>]</code></a>
 	<dd>Sets or queries the autocommit option of the connection.
 	<dt><a name="concurrency">
 	    <code>concurrency[=<var>intval</var>]</code></a>
-	<dd>Sets or queries the concurrency mode of the connection.
+	<dd>Sets or queries the concurrency mode of cursors opened on
+	  the connection.
 	<dt><a name="maxrows"><code>maxrows[=<var>intval</var>]</code></a>
-	<dd>Sets or queries the maximum rows for the connection.
+	<dd>Sets or queries the maximum rows returned in result sets from
+	  the connection.
 	<dt><a name="timeout"><code>timeout[=<var>intval</var>]</code></a>
-	<dd>Sets or queries the timeout value of the connection.
+	<dd>Sets or queries the number of seconds to wait for queries to
+	  execute on the connection before returning.
 	<dt><a name="maxlength"><code>maxlength[=<var>intval</var>]</code></a>
-	<dd>Sets or queries the maximum length for the connection.
-	<dt><a name="rowsetsize">
-	    <code>rowsetsize[=<var>intval</var>]</code></a>
-	<dd>Sets or queries the row set size option of the connection.
+	<dd>Sets or queries the maximum amount of data that will be returned
+          from a character or binary column.
 	<dt><a name="cursortype">
 	    <code>cursortype[=<var>intval</var>]</code></a>
-	<dd>Sets or queries the cursor behaviour of the connection.
+	<dd>Sets or queries the cursor type used for fetches.
 	<dt><a name="noscan"><code>noscan[=<var>bool</var>]</code></a>
-	<dd>Sets or queries the noscan option of the connection.
+	<dd>Sets or queries whether the driver scans SQL strings for ODBC
+          escape clauses.
+	<dt><a name="rowsetsize"><code>rowsetsize</code></a>
+	<dd>Returns the number of rows in a rowset fetched internally by a
+	  call o SQLExtendedFetch (hardcoded to 1).
 	<dt><a name="ignorecase"><code>ignorecase[=<var>bool</var>]</code><a>
 	<dd>Sets or queries the uppercase conversion for column names. If
 	  turned on (<var>bool</var> is true),
@@ -619,7 +656,7 @@ addcust.call("J.R. User", 9999)
       <h3>singleton methods:</h3>
       <dl>
 	<dt><a name="ODBC::new"><code>new</code></a>
-        <dd>Creates an unconnected ODBC object, eg for a later
+        <dd>Creates an unconnected ODBC object, e.g. for a later
 	  <code>drvconnect</code> method call.
 	<dt><a name="ODBC::new2"><code>new(<var>dsn</var>,[<var>user</var>,<var>passwd</var>])</code></a>
         <dd>Connect to an ODBC data source. Options are:
@@ -632,7 +669,8 @@ addcust.call("J.R. User", 9999)
       </dl>
       <h3>Remarks:</h3>
       The <a href="#run">run</a>, <a href="#prepare">prepare</a>,
-      <a href="#do">do</a>, and info methods (eg <a href="#tables">tables</a>)
+      <a href="#do">do</a>, and info methods
+      (e.g. <a href="#tables">tables</a>)
       can be invoked with a block. In this case the block is executed with
       the <a href="#ODBC::Statement">ODBC::Statement</a> as parameter. The
       <a href="#run">run</a> and <a href="#do">do</a> methods use the ODBC API
@@ -718,7 +756,7 @@ addcust.call("J.R. User", 9999)
 	<dd>Returns the first row of the query result as an array.
 	<dt><a name="fetch_scroll"><code>fetch_scroll(<var>direction</var>,
 	      <var>offset=1</var>)</code></a>
-	<dd>Returns the row addressed by <var>direction</var>, eg
+	<dd>Returns the row addressed by <var>direction</var>, e.g.
 	  <code>SQL_FETCH_LAST</code> as an array. <var>offset</var> is
 	  used for <code>SQL_FETCH_RELATIVE</code> and
 	  <code>SQL_FETCH_ABSOLUTE</code>.
@@ -746,10 +784,50 @@ addcust.call("J.R. User", 9999)
 	  <code>fetch_hash</code> for each row.
 	<dt><a name="execute"><code>execute([<var>args...</var>])</code></a>
 	<dd>Binds <var>args</var> to current query and executes it.
+	<dt><a name="stmt_run">
+	    <code>run(<var>sql</var>[,<var>args...</var>])</code></a>
+	<dd>Prepares and executes the query specified by <var>sql</var>
+	  with parameters bound from <var>args</var>.
+	<dt><a name="stmt_prep">
+	    <code>prepare(<var>sql</var>)</code></a>
+	<dd>Prepares the query specified by <var>sql</var>.
 	<dt><a name="more_results"><code>more_results</code></a>
 	<dd>Returns true and switches over to the next result set,
 	  if the query produced more than one result set. Otherwise
 	  returns false.
+	<dt><a name="stmt_get_option">
+	    <code>get_option(<var>option</var>)</code></a>
+	<dd>Gets a statement level option. <var>option</var> can be a
+	  module constant, e.g. <var>SQL_MAX_ROWS</var>, a number, or a
+	  string. This method returns the integer value of that option.
+	<dt><a name="stmt_set_option">
+	    <code>set_option(<var>option</var>,<var>intval</var>)</code></a>
+	<dd>Sets a statement level option. <var>option</var> can be a
+	  module constant, e.g. <var>SQL_MAX_ROWS</var>, a number, or a
+	  string. The second parameter <var>intval</var> can be used to
+	  set driver-specific statement options.
+	<dt><a name="stmt_concurrency">
+	    <code>concurrency[=<var>intval</var>]</code></a>
+	<dd>Sets or queries the concurrency mode of cursors opened on
+	  the statement.
+	<dt><a name="stmt_maxrows"><code>maxrows[=<var>intval</var>]</code></a>
+	<dd>Sets or queries the maximum rows returned by the statement.
+	<dt><a name="stmt_timeout"><code>timeout[=<var>intval</var>]</code></a>
+	<dd>Sets or queries the number of seconds to wait for the statement
+	  to execute before returning.
+	<dt><a name="stmt_maxlength">
+            <code>maxlength[=<var>intval</var>]</code></a>
+	<dd>Sets or queries the maximum amount of data that will be returned
+	  from a character or binary column.
+	<dt><a name="stmt_cursortype">
+	    <code>cursortype[=<var>intval</var>]</code></a>
+	<dd>Sets or queries the cursor type used for fetches.
+	<dt><a name="stmt_noscan"><code>noscan[=<var>bool</var>]</code></a>
+	<dd>Sets or queries whether the driver scans SQL strings for ODBC
+	  escape clauses.
+	<dt><a name="stmt_rowsetsize"><code>rowsetsize</code></a>
+	<dd>Returns the number of rows in a rowset fetched internally by
+	  a call to SQLExtendedFetch (hardcoded to 1).
       </dl>
       <h3>Remarks:</h3>
       The <code><a href="#fetch">fetch</a></code>,
@@ -840,7 +918,7 @@ addcust.call("J.R. User", 9999)
 	<dt><code>new(<var>string</var>)</code>
 	<dd>Creates a new date object from numeric values or from
 	  a <code>Date</code>, <code>Time</code>, or <code>String</code>
-	  object. Recognized string formats are eg
+	  object. Recognized string formats are e.g.
 	  <pre>2001-01-01
 2001-01-01 12:00:01
 {ts '2001-01-01 12:00:01.1'}
@@ -886,7 +964,7 @@ addcust.call("J.R. User", 9999)
 	<dt><code>new(<var>string</var>)</code>
 	<dd>Creates a new time object from numeric values or from
 	  a <code>Time</code> or <code>String</code> object.
-	  Recognized string formats are eg
+	  Recognized string formats are e.g.
 	  <pre>12:00:01
 2001-01-01 12:00:01
 {ts '2001-01-01 12:00:01.1'}
@@ -942,7 +1020,7 @@ addcust.call("J.R. User", 9999)
 	<dt><code>new(<var>string</var>)</code>
 	<dd>Creates a new time stamp object from numeric values or from
 	  a <code>Time</code> or <code>String</code> object.
-	  Recognized string formats are eg
+	  Recognized string formats are e.g.
 	  <pre>12:00:01
 2001-01-01
 2001-01-01 12:00:01
@@ -1036,16 +1114,16 @@ addcust.call("J.R. User", 9999)
 	The class to represent ODBC related exceptions. The descriptive
 	string is made up of the first ODBC driver or driver manager
 	message as concatenation of SQL state, native error, driver manager
-	name, database name/vendor, DSN, and error text, eg <pre>
+	name, database name/vendor, DSN, and error text, e.g. <pre>
 S1000 (1146) [unixODBC][TCX][MySQL]Table 'test.foo' doesn't exist</pre>
-	For internally generated errors, eg method invocation on
+	For internally generated errors, e.g. method invocation on
 	a broken connection, the descriptive string starts with
-	'INTERN' and native error 0, eg <pre>
+	'INTERN' and native error 0, e.g. <pre>
 INTERN (0) [RubyODBC]No connection</pre>
 	For errors programmatically generated by the
 	<a href="#ODBC::Object.raise"><code>raise</code></a> method,
 	the descriptive string starts with 'INTERN' and native error 1,
-	eg <pre>
+	e.g. <pre>
 INTERN (1) [RubyODBC]Programmer forgot to RTFM</pre>
       </P>
       <h3>super class:</h3>
@@ -1060,16 +1138,20 @@ INTERN (1) [RubyODBC]Programmer forgot to RTFM</pre>
       <P>
 	<code>ODBC::add_dsn(<var>driver</var>,<var>issys=false</var>)
 	  </code><br>
-	<code>ODBC::add_dsn(<var>name</var>,<var>attrs</var>,
-	  <var>issys=false</var>)</code><br>
+	<code>ODBC::add_dsn(<var>name</var>,<var>attrs</var>,<var>issys=false</var>)
+	  </code><br>
 	<code>ODBC::config_dsn(<var>driver</var>,<var>issys=false</var>)
 	  </code><br>
-	<code>ODBC::config_dsn(<var>name</var>,<var>attrs</var>,
-	  <var>issys=false</var>)</code><br>
+	<code>ODBC::config_dsn(<var>name</var>,<var>attrs</var>,<var>issys=false</var>)
+	  </code><br>
 	<code>ODBC::del_dsn(<var>driver</var>,<var>issys=false</var>)
 	  </code><br>
-	<code>ODBC::del_dsn(<var>name</var>,<var>attrs</var>,
-	  <var>issys=false</var>)</code><br>
+	<code>ODBC::del_dsn(<var>name</var>,<var>attrs</var>,<var>issys=false</var>)
+	  </code><br>
+	<code>ODBC::write_file_dsn(<var>filename</var>,<var>appname</var>,<var>key</var>[,<var>value</var>])
+	  </code><br>
+	<code>ODBC::read_file_dsn(<var>filename</var>,<var>appname</var>,<var>key</var>)
+	  </code><br>
 	<code>ODBC::trace([<var>mask</var>])</code><br>
 	<br>
 	<code>ODBC::Statement.parameter([<var>n</var>])</code><br>

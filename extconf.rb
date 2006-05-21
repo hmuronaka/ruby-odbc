@@ -37,12 +37,13 @@ $have_odbcinst_h = have_header("odbcinst.h")
 
 if PLATFORM =~ /mswin32/ then
   if !have_library_ex("odbc32", "SQLAllocConnect", "sql.h") ||
-  !have_library_ex("odbccp32", "SQLConfigDataSource", "odbcinst.h") ||
-  !have_library_ex("odbccp32", "SQLInstallerError", "odbcinst.h") ||
-  !have_library("user32", "CharUpper") then
+     !have_library_ex("odbccp32", "SQLConfigDataSource", "odbcinst.h") ||
+     !have_library_ex("odbccp32", "SQLInstallerError", "odbcinst.h") ||
+     !have_library("user32", "CharUpper") then
     puts "Can not locate odbc libraries"
     exit 1
   end
+  have_func("SQLInstallerError", "odbcinst.h")
 # mingw untested !!!
 elsif PLATFORM =~ /(mingw|cygwin)/ then
   have_library("odbc32", "")
@@ -51,8 +52,12 @@ elsif PLATFORM =~ /(mingw|cygwin)/ then
 else
   have_library("odbc", "SQLAllocConnect") ||
     have_library("iodbc", "SQLAllocConnect")
+  ($have_odbcinst_h &&
+    have_library("odbcinst", "SQLConfigDataSource")) ||
+  ($have_odbcinst_h &&
+    have_library("iodbcinst", "SQLConfigDataSource"))
   $have_odbcinst_h &&
-    have_library("odbcinst", "SQLConfigDataSource")
+    have_func("SQLInstallerError", "odbcinst.h")
 end
 
 create_makefile("odbc")
