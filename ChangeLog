@@ -1,6 +1,14 @@
 ODBC binding for Ruby
 ---------------------
 
+Wed Jun 28 2006 version 0.999 released
+
+	* added ODBC::Column@autoincrement information
+	* added init.c and extconf.rb logic for resolving iODBC/unixODBC
+	  library dependencies at runtime using GCC weak attribute in
+	  conjunction with dlopen(), this feature can be enabled/disabled
+	  with "ruby extconf.rb --enable-dlopen"
+
 Sun May 21 2006 version 0.998 released
 
 	* added undocumented module methods ODBC::write_file_dsn and

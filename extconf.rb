@@ -17,6 +17,7 @@ end
 dir_config("odbc")
 have_header("sql.h")
 have_header("sqlext.h")
+testdlopen = enable_config("dlopen", true)
 begin
   if PLATFORM !~ /(mingw|cygwin)/ then
     header = "sqltypes.h"
@@ -49,6 +50,11 @@ elsif PLATFORM =~ /(mingw|cygwin)/ then
   have_library("odbc32", "")
   have_library("odbccp32", "")
   have_library("user32", "")
+elsif (testdlopen && CONFIG["CC"] =~ /gcc/ && have_func("dlopen", "dlfcn.h") && have_library("dl", "dlopen")) then
+  $LDFLAGS+=" -Wl,-init -Wl,ruby_odbc_init -Wl,-fini -Wl,ruby_odbc_fini"
+  $CPPFLAGS+=" -DHAVE_SQLCONFIGDATASOURCE"
+  $CPPFLAGS+=" -DHAVE_SQLINSTALLERERROR"
+  $CPPFLAGS+=" -DUSE_DLOPEN_FOR_ODBC_LIBS"
 else
   have_library("odbc", "SQLAllocConnect") ||
     have_library("iodbc", "SQLAllocConnect")

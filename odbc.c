@@ -8,7 +8,7 @@
  * and redistribution of this file and for a
  * DISCLAIMER OF ALL WARRANTIES.
  *
- * $Id: odbc.c,v 1.40 2006/05/21 07:37:08 chw Exp chw $
+ * $Id: odbc.c,v 1.41 2006/06/28 18:19:56 chw Exp chw $
  */
 
 #undef ODBCVER
@@ -3236,6 +3236,17 @@ make_col(SQLHSTMT hstmt, int i, int upc)
 	v = (iv == SQL_NO_NULLS) ? Qfalse : Qtrue;
     }
     rb_iv_set(obj, "@unsigned", v);
+    v = Qnil;
+#ifdef SQL_COLUMN_AUTO_INCREMENT
+    if (succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, hstmt,
+		  SQLColAttributes(hstmt, ic, SQL_COLUMN_AUTO_INCREMENT, NULL,
+				   0, NULL, &iv),
+		  NULL,
+		  "SQLColAttributes(SQL_COLUMN_AUTO_INCREMENT)")) {
+	v = (iv == SQL_FALSE) ? Qfalse : Qtrue;
+    }
+#endif
+    rb_iv_set(obj, "@autoincrement", v);
     return obj;
 }
 

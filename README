@@ -1,6 +1,6 @@
-# $Id: README,v 1.27 2006/05/21 07:58:58 chw Exp chw $
+# $Id: README,v 1.28 2006/06/28 18:24:07 chw Exp chw $
 
-ruby-odbc-0.998
+ruby-odbc-0.999
 
 This is an ODBC binding for Ruby. So far it has been tested with
 
@@ -29,13 +29,17 @@ Requirements:
 
 Installation:
 
-    $ ruby extconf.rb
+    $ ruby extconf.rb [--enable-dlopen|--disable-dlopen]
     $ make
     # make install
 
+    --enable/disble-dlopen turns on/off special initialization
+    code to make ruby-odbc agnostic to unixODBC/iODBC driver
+    manager shared library names when GCC is used for compile
+
 Installation of utf8 version:
 
-    $ ruby -Cutf8 extconf.rb
+    $ ruby -Cutf8 extconf.rb [--enable-dlopen|--disable-dlopen]
     $ make -C utf8
     # make -C utf8 install
 
