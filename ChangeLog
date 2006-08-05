@@ -1,6 +1,18 @@
 ODBC binding for Ruby
 ---------------------
 
+Sat Aug 05 2006 version 0.9991 released
+
+	* fixed more SQLLEN vs SQLINTEGER issues and 64 bit warnings
+	* bail out during extconf.rb when sql.h/sqlext.h is not
+	  available as requested by Curt Sampson
+	* fixed transaction logic ENV vs. DBC and use SQLEndTran()
+	  for ODBCVER >= 0x0300, thanks Adam Harper for patch
+	* detect SQL parameter strings containing '\0's and use
+	  SQL_C_BINARY when appropriate as parameter types to support
+	  BLOB data, thanks Daigo Moriwaki for report and testing
+	* don't use dlopen()/GCC weak attributes on MacOSX
+
 Wed Jun 28 2006 version 0.999 released
 
 	* added ODBC::Column@autoincrement information

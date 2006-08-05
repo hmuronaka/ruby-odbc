@@ -5,7 +5,9 @@ MANIFEST
 README
 extconf.rb
 odbc.c
+init.c
 test.rb
+cqgen.rb
 doc/odbc.html
 test/00connect.rb
 test/10create_table.rb
@@ -16,4 +18,5 @@ test/50drop_table.rb
 test/70close.rb
 utf8/extconf.rb
 utf8/odbc.c
+utf8/init.c
 utf8/test.rb

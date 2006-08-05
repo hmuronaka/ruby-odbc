@@ -8,7 +8,7 @@
  * and redistribution of this file and for a
  * DISCLAIMER OF ALL WARRANTIES.
  *
- * $Id: odbc.c,v 1.41 2006/06/28 18:19:56 chw Exp chw $
+ * $Id: odbc.c,v 1.48 2006/08/05 08:29:44 chw Exp chw $
  */
 
 #undef ODBCVER
@@ -44,6 +44,13 @@ typedef SQLWCHAR SQLTCHAR;
 #else
 typedef SQLCHAR SQLTCHAR;
 #endif
+#endif
+
+#ifndef HAVE_TYPE_SQLLEN
+#define SQLLEN  SQLINTEGER
+#endif
+#ifndef HAVE_TYPE_SQLULEN
+#define SQLULEN SQLUINTEGER
 #endif
 
 #ifndef HAVE_RB_DEFINE_ALLOC_FUNC
@@ -102,9 +109,9 @@ typedef struct dbc {
 
 typedef struct {
     SQLSMALLINT type;
-    SQLUINTEGER coldef;
+    SQLULEN coldef;
     SQLSMALLINT scale;
-    SQLINTEGER rlen;
+    SQLLEN rlen;
     SQLSMALLINT nullable;
     int override;
     int tofree;
@@ -241,7 +248,7 @@ uc_strchr(SQLWCHAR *str, SQLWCHAR c)
 	while (*str && *str != c) {
 	    ++str;
 	}
-	str = *str == c ? str : NULL;
+	str = (*str == c) ? str : NULL;
     }
     return str;
 }
@@ -369,16 +376,21 @@ uc_str_cat(VALUE v, SQLWCHAR *str, int len)
 }
 
 static SQLWCHAR *
-uc_from_utf(unsigned char *str)
+uc_from_utf(unsigned char *str, int len)
 {
     SQLWCHAR *uc = NULL;
 
     if (str) {
-	int i = 0, len = strlen(str);
+	int i = 0;
+	unsigned char *strend;
 
+	if (len < 0) {
+	    len = strlen((char *) str);
+	}
+	strend = str + len;
 	uc = ALLOC_N(SQLWCHAR, len + 1);
 	if (uc) {
-	    while (*str) {
+	    while (str < strend) {
 		unsigned char c = str[0];
 
 		if (c < 0xc0) {
@@ -864,26 +876,26 @@ get_installer_err()
 #endif
     char buf[128];
     SQLRETURN err;
-    SQLSMALLINT len;
     VALUE v0 = Qnil, a = Qnil, v;
     int done = 0;
-    WORD i;
+    WORD i, len;
     DWORD insterrcode;
 
     for (i = 1; !done && i <= 8; i++) {
 	v = Qnil;
 #if defined(UNICODE) && defined(HAVE_SQLINSTALLERERRORW)
-	err = tracesql(SQL_HENV_NULL, SQL_HDBC_NULL, SQL_HSTMT_NULL,
+	err = tracesql(SQL_NULL_HENV, SQL_NULL_HDBC, SQL_NULL_HSTMT,
 		       SQLInstallerErrorW(i, &insterrcode, msg,
 					  SQL_MAX_MESSAGE_LENGTH, &len),
 		       "SQLInstallerErrorW");
+	msg[SQL_MAX_MESSAGE_LENGTH - 1] = 0;
 #else
-	err = tracesql(SQL_HENV_NULL, SQL_HDBC_NULL, SQL_HSTMT_NULL,
+	err = tracesql(SQL_NULL_HENV, SQL_NULL_HDBC, SQL_NULL_HSTMT,
 		       SQLInstallerError(i, &insterrcode, msg,
 					 SQL_MAX_MESSAGE_LENGTH, &len),
 		       "SQLInstallerError");
-#endif
 	msg[SQL_MAX_MESSAGE_LENGTH - 1] = '\0';
+#endif
 	switch (err) {
 	case SQL_SUCCESS:
 	case SQL_SUCCESS_WITH_INFO:
@@ -1363,14 +1375,15 @@ conf_dsn(int argc, VALUE *argv, VALUE self, int op)
     }
     astr = rb_str_cat(astr, "", 1);
 #if defined(UNICODE) && defined(HAVE_SQLCONFIGDATASOURCEW)
-    sdrv = uc_from_utf(STR2CSTR(drv));
-    sastr = uc_from_utf(STR2CSTR(astr));
+    sdrv = uc_from_utf((unsigned char *) STR2CSTR(drv), -1);
+    sastr = uc_from_utf((unsigned char *) STR2CSTR(astr), -1);
     if (!sdrv || !sastr) {
 	uc_free(sdrv);
 	uc_free(sastr);
 	rb_raise(Cerror, set_err("Out of memory", 0));
     }
-    if (SQLConfigDataSourceW(NULL, (WORD) op, sdrv, sastr)) {
+    if (SQLConfigDataSourceW(NULL, (WORD) op,
+			     (LPCWSTR) sdrv, (LPCWSTR) sastr)) {
 	uc_free(sdrv);
 	uc_free(sastr);
 	return Qnil;
@@ -1384,7 +1397,7 @@ conf_dsn(int argc, VALUE *argv, VALUE self, int op)
 	return Qnil;
     }
 #endif
-#ifdef HAVE_SQLINSTALLERERROR
+#if defined(HAVE_SQLINSTALLERERROR) || (defined(UNICODE) && defined(HAVE_SQLINSTALLERERRORW))
     rb_raise(Cerror, set_err(get_installer_err(), 0));
 #else
     rb_raise(Cerror, set_err("DSN configuration error", 0));
@@ -1431,7 +1444,12 @@ dbc_wfdsn(int argc, VALUE *argv, VALUE self)
 {
 #ifdef HAVE_ODBCINST_H
     VALUE fname, aname, kname, val;
+#if defined(UNICODE) && defined(HAVE_SQLWRITEFILEDSNW)
+    SQLWCHAR *sfname, *saname, *skname, *sval = NULL;
+    BOOL rc;
+#else
     char *sfname, *saname, *skname, *sval = NULL;
+#endif
 
     rb_scan_args(argc, argv, "31", &fname, &aname, &kname, &val);
     Check_Type(fname, T_STRING);
@@ -1440,6 +1458,32 @@ dbc_wfdsn(int argc, VALUE *argv, VALUE self)
     if (val != Qnil) {
 	Check_Type(val, T_STRING);
     }
+#if defined(UNICODE) && defined(HAVE_SQLWRITEFILEDSNW)
+    sfname = uc_from_utf((unsigned char *) STR2CSTR(fname), -1);
+    saname = uc_from_utf((unsigned char *) STR2CSTR(aname), -1);
+    skname = uc_from_utf((unsigned char *) STR2CSTR(kname), -1);
+    if (!sfname || !saname || !skname) {
+nomem:
+	uc_free(sfname);
+	uc_free(saname);
+	uc_free(skname);
+	rb_raise(Cerror, set_err("Out of memory", 0));
+    }
+    if (val != Qnil) {
+	sval = uc_from_utf((unsigned char *) STR2CSTR(val), -1);
+	if (!sval) {
+	    goto nomem;
+	}
+    }
+    rc = SQLWriteFileDSNW(sfname, saname, skname, sval);
+    uc_free(sfname);
+    uc_free(saname);
+    uc_free(skname);
+    uc_free(sval);
+    if (rc) {
+	return Qnil;
+    }
+#else
     sfname = STR2CSTR(fname);
     saname = STR2CSTR(aname);
     skname = STR2CSTR(kname);
@@ -1449,7 +1493,8 @@ dbc_wfdsn(int argc, VALUE *argv, VALUE self)
     if (SQLWriteFileDSN(sfname, saname, skname, sval)) {
 	return Qnil;
     }
-#ifdef HAVE_SQLINSTALLERERROR
+#endif
+#if defined(HAVE_SQLINSTALLERERROR) || (defined(UNICODE) && defined(HAVE_SQLINSTALLERERRORW))
     rb_raise(Cerror, set_err(get_installer_err(), 0));
 #else
     rb_raise(Cerror, set_err("File DSN configuration error", 0));
@@ -1465,12 +1510,37 @@ dbc_rfdsn(int argc, VALUE *argv, VALUE self)
 {
 #ifdef HAVE_ODBCINST_H
     VALUE fname, aname, kname;
+#if defined(UNICODE) && defined(HAVE_SQLREADFILEDSNW)
+    SQLWCHAR *sfname, *saname, *skname, valbuf[SQL_MAX_MESSAGE_LENGTH];
+    BOOL rc;
+#else
     char *sfname, *saname, *skname, valbuf[SQL_MAX_MESSAGE_LENGTH];
+#endif
 
     rb_scan_args(argc, argv, "30", &fname, &aname, &kname);
     Check_Type(fname, T_STRING);
     Check_Type(aname, T_STRING);
     Check_Type(kname, T_STRING);
+#if defined(UNICODE) && defined(HAVE_SQLREADFILEDSNW)
+    sfname = uc_from_utf((unsigned char *) STR2CSTR(fname), -1);
+    saname = uc_from_utf((unsigned char *) STR2CSTR(aname), -1);
+    skname = uc_from_utf((unsigned char *) STR2CSTR(kname), -1);
+    valbuf[0] = 0;
+    if (!sfname || !saname || !skname) {
+	uc_free(sfname);
+	uc_free(saname);
+	uc_free(skname);
+	rb_raise(Cerror, set_err("Out of memory", 0));
+    }
+    rc = SQLReadFileDSNW(sfname, saname, skname, valbuf,
+			 sizeof (valbuf), NULL);
+    uc_free(sfname);
+    uc_free(saname);
+    uc_free(skname);
+    if (rc) {
+	return uc_tainted_str_new2(valbuf);
+    }
+#else
     sfname = STR2CSTR(fname);
     saname = STR2CSTR(aname);
     skname = STR2CSTR(kname);
@@ -1479,7 +1549,8 @@ dbc_rfdsn(int argc, VALUE *argv, VALUE self)
 		       sizeof (valbuf), NULL)) {
 	return rb_tainted_str_new2(valbuf);
     }
-#ifdef HAVE_SQLINSTALLERERROR
+#endif
+#if defined(HAVE_SQLINSTALLERERROR) || (defined(UNICODE) && defined(HAVE_SQLINSTALLERERRORW))
     rb_raise(Cerror, set_err(get_installer_err(), 0));
 #else
     rb_raise(Cerror, set_err("File DSN configuration error", 0));
@@ -1638,13 +1709,13 @@ dbc_connect(int argc, VALUE *argv, VALUE self)
     }
 #ifdef UNICODE
     if (user != Qnil) {
-	suser = uc_from_utf(STR2CSTR(user));
+	suser = uc_from_utf((unsigned char *) STR2CSTR(user), -1);
     }
     if (passwd != Qnil) {
-	spasswd = uc_from_utf(STR2CSTR(passwd));
+	spasswd = uc_from_utf((unsigned char *) STR2CSTR(passwd), -1);
     }
-    sdsn = uc_from_utf(STR2CSTR(dsn));
-    if (!suser || !spasswd || !sdsn) {
+    sdsn = uc_from_utf((unsigned char *) STR2CSTR(dsn), -1);
+    if ((!suser && user != Qnil) || (!spasswd && passwd != Qnil) || !sdsn) {
 	uc_free(sdsn);
 	uc_free(suser);
 	uc_free(spasswd);
@@ -1670,8 +1741,10 @@ dbc_connect(int argc, VALUE *argv, VALUE self)
     }
     if (!succeeded(SQL_NULL_HENV, dbc, SQL_NULL_HSTMT,
 		   SQLConnect(dbc, (SQLTCHAR *) sdsn, SQL_NTS,
-			      (SQLTCHAR *) suser, suser ? SQL_NTS : 0,
-			      (SQLTCHAR *) spasswd, spasswd ? SQL_NTS : 0),
+			      (SQLTCHAR *) suser,
+			      (SQLSMALLINT) (suser ? SQL_NTS : 0),
+			      (SQLTCHAR *) spasswd,
+			      (SQLSMALLINT) (spasswd ? SQL_NTS : 0)),
 		   &msg,
 		   "SQLConnect('%s')", sdsn)) {
 #ifdef UNICODE
@@ -1733,7 +1806,7 @@ dbc_drvconnect(VALUE self, VALUE drv)
 	e = get_env(p->env);
     }
 #ifdef UNICODE
-    sdrv = uc_from_utf(STR2CSTR(drv));
+    sdrv = uc_from_utf((unsigned char *) STR2CSTR(drv), -1);
     if (!sdrv) {
 	rb_raise(Cerror, set_err("Out of memory", 0));
     }
@@ -1771,7 +1844,7 @@ dbc_connected(VALUE self)
 {
     DBC *p = get_dbc(self);
 
-    return p->hdbc == SQL_NULL_HDBC ? Qfalse : Qtrue;
+    return (p->hdbc == SQL_NULL_HDBC) ? Qfalse : Qtrue;
 }
 
 /*
@@ -2741,8 +2814,8 @@ make_coltypes(SQLHSTMT hstmt, int ncols, char **msgp)
 {
     int i;
     COLTYPE *ret = NULL;
-    SQLINTEGER type, size;
-    
+    SQLLEN type, size;
+
     for (i = 0; i < ncols; i++) {
 	SQLUSMALLINT ic = i + 1;
 
@@ -3088,7 +3161,7 @@ make_col(SQLHSTMT hstmt, int i, int upc)
 {
     VALUE obj, v;
     SQLUSMALLINT ic = i + 1;
-    SQLINTEGER iv;
+    SQLLEN iv = 0;
 #ifdef UNICODE
     SQLWCHAR name[SQL_MAX_MESSAGE_LENGTH];
 #else
@@ -3352,13 +3425,13 @@ dbc_info(int argc, VALUE *argv, VALUE self, int mode)
     }
 #ifdef UNICODE
     if (swhich) {
-	swhich = uc_from_utf(STR2CSTR((VALUE) swhich));
+	swhich = uc_from_utf((unsigned char *) STR2CSTR((VALUE) swhich), -1);
 	if (!swhich) {
 	    rb_raise(Cerror, set_err("Out of memory", 0));
 	}
     }
     if (swhich2) {
-	swhich2 = uc_from_utf(STR2CSTR((VALUE) swhich2));
+	swhich2 = uc_from_utf((unsigned char *) STR2CSTR((VALUE) swhich2), -1);
 	if (!swhich2) {
 	    uc_free(swhich);
 	    rb_raise(Cerror, set_err("Out of memory", 0));
@@ -3558,15 +3631,25 @@ dbc_trans(VALUE self, int what)
     char *msg;
 
     e = get_env(self);
-    if (rb_obj_is_kind_of(self, Cenv) != Qtrue) {
+    if (rb_obj_is_kind_of(self, Cdbc) == Qtrue) {
 	DBC *d;
 
 	d = get_dbc(self);
 	dbc = d->hdbc;
     }
     if (!succeeded(e->henv, dbc, SQL_NULL_HSTMT,
+#if (ODBCVER >= 0x0300)
+		   SQLEndTran((SQLSMALLINT)
+			      ((dbc == SQL_NULL_HDBC) ? SQL_HANDLE_ENV :
+							SQL_HANDLE_DBC),
+			      (dbc == SQL_NULL_HDBC) ? e->henv : dbc,
+			      (SQLSMALLINT) what),
+		   &msg, "SQLEndTran"
+#else
 		   SQLTransact(e->henv, dbc, (SQLUSMALLINT) what),
-		   &msg, "SQLTransact")) {
+		   &msg, "SQLTransact"
+#endif
+       )) {
 	rb_raise(Cerror, "%s", msg);
     }
     return Qnil;
@@ -3638,9 +3721,10 @@ dbc_transaction(VALUE self)
 static VALUE
 do_attr(int argc, VALUE *argv, VALUE self, int op)
 {
-    SQLHENV henv = NULL;
+    SQLHENV henv = SQL_NULL_HENV;
     VALUE val;
-    SQLINTEGER v, l;
+    SQLLEN v = 0;
+    SQLINTEGER l;
     char *msg;
 
     if (self != Modbc) {
@@ -3759,7 +3843,7 @@ do_option(int argc, VALUE *argv, VALUE self, int isstmt, int op)
     char *msg;
     int level = isstmt ? OPT_LEVEL_STMT : OPT_LEVEL_DBC;
 
-    rb_scan_args(argc, argv, op == -1 ? "11" : "01", &val, &val2);
+    rb_scan_args(argc, argv, (op == -1) ? "11" : "01", &val, &val2);
     if (isstmt) {
 	Data_Get_Struct(self, STMT, q);
 	if (q->dbc == Qnil) {
@@ -4701,10 +4785,10 @@ timestamp_to_s(VALUE self)
     char buf[256];
 
     Data_Get_Struct(self, TIMESTAMP_STRUCT, ts);
-    sprintf(buf, "%04d-%02d-%02d %02d:%02d:%02d %ld",
+    sprintf(buf, "%04d-%02d-%02d %02d:%02d:%02d %u",
 	    ts->year, ts->month, ts->day,
 	    ts->hour, ts->minute, ts->second,
-	    ts->fraction);
+	    (unsigned int) ts->fraction);
     return rb_str_new2(buf);
 }
 
@@ -4965,7 +5049,7 @@ static VALUE
 stmt_nrows(VALUE self)
 {
     STMT *q;
-    SQLINTEGER rows;
+    SQLLEN rows;
     char *msg;
 
     Data_Get_Struct(self, STMT, q);
@@ -5078,7 +5162,7 @@ stmt_cursorname(int argc, VALUE *argv, VALUE self)
 	cn = rb_any_to_s(cn);
     }
 #ifdef UNICODE
-    cp = uc_from_utf(STR2CSTR(cn));
+    cp = uc_from_utf((unsigned char *) STR2CSTR(cn), -1);
     if (!cp) {
 	rb_raise(Cerror, set_err("Out of memory", 0));
     }
@@ -5381,11 +5465,10 @@ do_fetch(STMT *q, int mode)
     }
     offc = q->upc ? (2 * q->ncols) : 0;
     for (i = 0; i < q->ncols; i++) {
-	SQLINTEGER curlen;
+	SQLLEN curlen, totlen;
 	SQLSMALLINT type = q->coltypes[i].type;
 	VALUE v, name;
 	char *valp, *freep = NULL;
-	SQLINTEGER totlen;
 
 	curlen = q->coltypes[i].size;
 	if (curlen == SQL_NO_TOTAL) {
@@ -5606,7 +5689,7 @@ stmt_fetch_bang(VALUE self)
 }
 
 static VALUE
-stmt_fetch_first1(VALUE self, int bang)
+stmt_fetch_first1(VALUE self, int bang, int nopos)
 {
     STMT *q;
     SQLRETURN ret;
@@ -5620,6 +5703,9 @@ stmt_fetch_first1(VALUE self, int bang)
     if (q->ncols <= 0) {
 	return Qnil;
     }
+    if (nopos) {
+	goto dofetch;
+    }
 #if (ODBCVER < 0x0300)
     msg = "SQLExtendedFetch(SQL_FETCH_FIRST)";
     ret = SQLExtendedFetch(q->hstmt, SQL_FETCH_FIRST, 0, &nRows, rowStat);
@@ -5632,6 +5718,7 @@ stmt_fetch_first1(VALUE self, int bang)
 	return Qnil;
     }
     if (succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt, ret, &err, msg)) {
+dofetch:
 	return do_fetch(q, DOFETCH_ARY | (bang ? DOFETCH_BANG : 0));
     }
     rb_raise(Cerror, "%s", err);
@@ -5641,13 +5728,13 @@ stmt_fetch_first1(VALUE self, int bang)
 static VALUE
 stmt_fetch_first(VALUE self)
 {
-    return stmt_fetch_first1(self, 0);
+    return stmt_fetch_first1(self, 0, 0);
 }
 
 static VALUE
 stmt_fetch_first_bang(VALUE self)
 {
-    return stmt_fetch_first1(self, 1);
+    return stmt_fetch_first1(self, 1, 0);
 }
 
 static VALUE
@@ -5812,7 +5899,7 @@ stmt_fetch_hash_bang(int argc, VALUE *argv, VALUE self)
 }
 
 static VALUE
-stmt_fetch_first_hash1(int argc, VALUE *argv, VALUE self, int bang)
+stmt_fetch_first_hash1(int argc, VALUE *argv, VALUE self, int bang, int nopos)
 {
     STMT *q;
     SQLRETURN ret;
@@ -5827,6 +5914,9 @@ stmt_fetch_first_hash1(int argc, VALUE *argv, VALUE self, int bang)
     if (q->ncols <= 0) {
 	return Qnil;
     }
+    if (nopos) {
+	goto dofetch;
+    }
 #if (ODBCVER < 0x0300)
     msg = "SQLExtendedFetch(SQL_FETCH_FIRST)";
     ret = SQLExtendedFetch(q->hstmt, SQL_FETCH_FIRST, 0, &nRows, rowStat);
@@ -5839,6 +5929,7 @@ stmt_fetch_first_hash1(int argc, VALUE *argv, VALUE self, int bang)
 	return Qnil;
     }
     if (succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt, ret, &err, msg)) {
+dofetch:
 	return do_fetch(q, mode | (bang ? DOFETCH_BANG : 0));
     }
     rb_raise(Cerror, "%s", err);
@@ -5848,14 +5939,13 @@ stmt_fetch_first_hash1(int argc, VALUE *argv, VALUE self, int bang)
 static VALUE
 stmt_fetch_first_hash(int argc, VALUE *argv, VALUE self)
 {
-    return stmt_fetch_first_hash1(argc, argv, self, 0);
+    return stmt_fetch_first_hash1(argc, argv, self, 0, 0);
 }
 
 static VALUE
 stmt_each(VALUE self)
 {
     VALUE row;
-    int first;
     STMT *q;
 #if (ODBCVER < 0x0300)
     SQLUINTEGER nRows;
@@ -5875,17 +5965,18 @@ stmt_each(VALUE self)
 #endif
     {
     case SQL_NO_DATA:
+	row = Qnil;
+	break;
     case SQL_SUCCESS:
     case SQL_SUCCESS_WITH_INFO:
-	first = 1;
+	row = stmt_fetch_first1(self, 0, 1);
 	break;
     default:
-	first = 0;
+	row = stmt_fetch1(self, 0);
     }
-    while ((row = first ? stmt_fetch_first1(self, 0) :
-			  stmt_fetch1(self, 0)) != Qnil) {
-	first = 0;
+    while (row != Qnil) {
 	rb_yield(row);
+	row = stmt_fetch1(self, 0);
     }
     return self;
 }
@@ -5894,7 +5985,6 @@ static VALUE
 stmt_each_hash(int argc, VALUE *argv, VALUE self)
 {
     VALUE row, withtab;
-    int first;
     STMT *q;
     int mode = stmt_hash_mode(argc, argv, self);
 #if (ODBCVER < 0x0300)
@@ -5916,17 +6006,18 @@ stmt_each_hash(int argc, VALUE *argv, VALUE self)
 #endif
     {
     case SQL_NO_DATA:
+	row = Qnil;
+	break;
     case SQL_SUCCESS:
     case SQL_SUCCESS_WITH_INFO:
-	first = 1;
+	row = stmt_fetch_first_hash1(1, &withtab, self, 0, 1);
 	break;
     default:
-	first = 0;
+	row = stmt_fetch_hash1(1, &withtab, self, 0);
     }
-    while ((row = first ? stmt_fetch_first_hash1(1, &withtab, self, 0) :
-			  stmt_fetch_hash1(1, &withtab, self, 0)) != Qnil) {
-	first = 0;
+    while (row != Qnil) {
 	rb_yield(row);
+	row = stmt_fetch_hash1(1, &withtab, self, 0);
     }
     return self;
 }
@@ -6001,7 +6092,7 @@ stmt_prep_int(int argc, VALUE *argv, VALUE self, int mode)
     Check_Type(sql, T_STRING);
 #ifdef UNICODE
     csql = STR2CSTR(sql);
-    ssql = uc_from_utf(csql);
+    ssql = uc_from_utf((unsigned char *) csql, -1);
     if (!ssql) {
 	rb_raise(Cerror, set_err("Out of memory", 0));
     }
@@ -6074,6 +6165,7 @@ stmt_exec_int(int argc, VALUE *argv, VALUE self, int mode)
 	SQLSMALLINT ctype, stype;
 	SQLINTEGER vlen, rlen;
 	SQLUINTEGER coldef;
+	long llen;
 	int retry = 1;
 
 	q->pinfo[i].tofree = 0;
@@ -6081,7 +6173,15 @@ stmt_exec_int(int argc, VALUE *argv, VALUE self, int mode)
 	case T_STRING:
 #ifdef UNICODE
 	    ctype = SQL_C_WCHAR;
-	    up = uc_from_utf(STR2CSTR(argv[i]));
+	    up = (SQLWCHAR *) rb_str2cstr(argv[i], &llen);
+	    if (llen != strlen((char *) up)) {
+		ctype = SQL_C_BINARY;
+		valp = (SQLPOINTER) up;
+		rlen = llen;
+		vlen = rlen + 1;
+		break;
+	    }
+	    up = uc_from_utf((unsigned char *) up, llen);
 	    if (!up) {
 		for (--i; i >= 0; i--) {
 		    if (q->pinfo[i].tofree) {
@@ -6096,8 +6196,11 @@ stmt_exec_int(int argc, VALUE *argv, VALUE self, int mode)
 	    q->pinfo[i].tofree = 1;
 #else
 	    ctype = SQL_C_CHAR;
-	    valp = (SQLPOINTER) STR2CSTR(argv[i]);
-	    rlen = strlen((char *) valp);
+	    valp = (SQLPOINTER) rb_str2cstr(argv[i], &llen);
+	    rlen = llen;
+	    if (rlen != strlen((char *) valp)) {
+		ctype = SQL_C_BINARY;
+	    }
 	    vlen = rlen + 1;
 #endif
 	    break;
@@ -6151,8 +6254,11 @@ stmt_exec_int(int argc, VALUE *argv, VALUE self, int mode)
 		break;
 	    }
 	    ctype = SQL_C_CHAR;
-	    valp = (void *) STR2CSTR(rb_any_to_s(argv[i]));
-	    rlen = strlen((char *) valp);
+	    valp = (SQLPOINTER *) rb_str2cstr(rb_str_to_str(argv[i]), &llen);
+	    rlen = llen;
+	    if (rlen != strlen((char *) valp)) {
+		ctype = SQL_C_BINARY;
+	    }
 	    vlen = rlen + 1;
 	    break;
 	}

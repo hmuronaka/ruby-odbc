@@ -15,8 +15,14 @@ def have_library_ex(lib, func="main", headers=nil)
 end
  
 dir_config("odbc")
-have_header("sql.h")
-have_header("sqlext.h")
+have_header("sql.h") || begin
+  puts "ERROR: sql.h not found"
+  exit 1
+end
+have_header("sqlext.h") || begin
+  puts "ERROR: sqlext.h not found"
+  exit 1
+end
 testdlopen = enable_config("dlopen", true)
 begin
   if PLATFORM !~ /(mingw|cygwin)/ then
@@ -34,6 +40,38 @@ rescue
   puts "WARNING: if defined, modify CFLAGS in Makefile to contain"
   puts "WARNING: the option -DHAVE_TYPE_SQLTCHAR"
 end
+begin
+  if PLATFORM !~ /(mingw|cygwin)/ then
+    header = "sqltypes.h"
+  else
+    header = ["windows.h", "sqltypes.h"]
+  end
+  if defined? have_type
+    have_type("SQLLEN", header)
+  else
+    throw
+  end
+rescue
+  puts "WARNING: please check sqltypes.h for SQLLEN manually,"
+  puts "WARNING: if defined, modify CFLAGS in Makefile to contain"
+  puts "WARNING: the option -DHAVE_TYPE_SQLLEN"
+end
+begin
+  if PLATFORM !~ /(mingw|cygwin)/ then
+    header = "sqltypes.h"
+  else
+    header = ["windows.h", "sqltypes.h"]
+  end
+  if defined? have_type
+    have_type("SQLULEN", header)
+  else
+    throw
+  end
+rescue
+  puts "WARNING: please check sqltypes.h for SQLULEN manually,"
+  puts "WARNING: if defined, modify CFLAGS in Makefile to contain"
+  puts "WARNING: the option -DHAVE_TYPE_SQLULEN"
+end
 $have_odbcinst_h = have_header("odbcinst.h")
 
 if PLATFORM =~ /mswin32/ then
@@ -44,15 +82,17 @@ if PLATFORM =~ /mswin32/ then
     puts "Can not locate odbc libraries"
     exit 1
   end
-  have_func("SQLInstallerError", "odbcinst.h")
   have_func("SQLConfigDataSourceW", "odbcinst.h")
+  have_func("SQLWriteFileDSNW", "odbcinst.h")
+  have_func("SQLReadFileDSNW", "odbcinst.h")
+  have_func("SQLInstallerError", "odbcinst.h")
   have_func("SQLInstallerErrorW", "odbcinst.h")
 # mingw untested !!!
 elsif PLATFORM =~ /(mingw|cygwin)/ then
   have_library("odbc32", "")
   have_library("odbccp32", "")
   have_library("user32", "")
-elsif (testdlopen && CONFIG["CC"] =~ /gcc/ && have_func("dlopen", "dlfcn.h") && have_library("dl", "dlopen")) then
+elsif (testdlopen && PLATFORM !~ /(macos|darwin)/ && CONFIG["CC"] =~ /gcc/ && have_func("dlopen", "dlfcn.h") && have_library("dl", "dlopen")) then
   $LDFLAGS+=" -Wl,-init -Wl,ruby_odbc_init -Wl,-fini -Wl,ruby_odbc_fini"
   $CPPFLAGS+=" -DHAVE_SQLCONFIGDATASOURCE"
   $CPPFLAGS+=" -DHAVE_SQLINSTALLERERROR"
@@ -66,6 +106,10 @@ else
     have_library("iodbcinst", "SQLConfigDataSource"))
   $have_odbcinst_h &&
     have_func("SQLConfigDataSourceW", "odbcinst.h")
+  $have_odbcinst_h &&
+    have_func("SQLWriteFileDSNW", "odbcinst.h")
+  $have_odbcinst_h &&
+    have_func("SQLReadFileDSNW", "odbcinst.h")
   $have_odbcinst_h &&
     have_func("SQLInstallerError", "odbcinst.h")
   $have_odbcinst_h &&
