@@ -1,6 +1,19 @@
 ODBC binding for Ruby
 ---------------------
 
+Mon Sep 11 2006 version 0.9992 released
+
+	* added parameter "column" in ODBC::Database::columns
+	* intern most strings on module load
+	* enhanced ODBC::Statement.fetch_hash et.al. to produce
+	  intern'ed strings or fixnums as hash keys as requested
+	  by Neville Burnell
+	* handle SQL_NO_DATA for chunk-wise SQLGetData()
+	* determine dynamically which API (UNICODE or ANSI) to
+	  use for ODBC installer functions	
+	* more 64 bit fixes
+	* added missing SQLEndTran() in init.c
+
 Sat Aug 05 2006 version 0.9991 released
 
 	* fixed more SQLLEN vs SQLINTEGER issues and 64 bit warnings

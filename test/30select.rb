@@ -41,3 +41,29 @@ a = []
 $q.execute.each_hash {|r| a.push(r)}
 if a.size != 4 then raise "fetch: failed" end
 $q.close
+
+a = []
+$q.execute.each_hash(true) {|r| a.push(r)}
+if a.size != 4 then raise "fetch: failed" end
+$q.close
+
+a = []
+$q.execute.each_hash(:key=>:Symbol) {|r| a.push(r)}
+if a.size != 4 then raise "fetch: failed" end
+$q.close
+
+a = []
+$q.execute.each_hash(:key=>:Symbol,:table_names=>true) {|r| a.push(r)}
+if a.size != 4 then raise "fetch: failed" end
+$q.close
+
+a = []
+$q.execute.each_hash(:key=>:String,:table_names=>false) {|r| a.push(r)}
+if a.size != 4 then raise "fetch: failed" end
+$q.close
+
+a = []
+$q.execute.each_hash(:key=>:Fixnum,:table_names=>false) {|r| a.push(r)}
+if a.size != 4 then raise "fetch: failed" end
+$q.close
+

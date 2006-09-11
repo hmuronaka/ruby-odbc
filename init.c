@@ -6,7 +6,7 @@
  * and redistribution of this file and for a
  * DISCLAIMER OF ALL WARRANTIES.
  *
- * $Id: init.c,v 1.2 2006/06/28 18:17:37 chw Exp chw $
+ * $Id: init.c,v 1.4 2006/08/16 05:44:23 chw Exp chw $
  */
 
 #include "ruby.h"
@@ -54,7 +54,6 @@ WEAKFUNC(SQLFreeStmt)
 WEAKFUNC(SQLGetData)
 WEAKFUNC(SQLGetEnvAttr)
 WEAKFUNC(SQLGetStmtOption)
-WEAKFUNC(SQLInstallerError)
 WEAKFUNC(SQLMoreResults)
 WEAKFUNC(SQLNumParams)
 WEAKFUNC(SQLNumResultCols)
@@ -62,6 +61,7 @@ WEAKFUNC(SQLRowCount)
 WEAKFUNC(SQLSetEnvAttr)
 WEAKFUNC(SQLSetStmtOption)
 WEAKFUNC(SQLTransact)
+WEAKFUNC(SQLEndTran)
 
 WEAKFUNC(SQLColAttributes)
 WEAKFUNC(SQLColAttributesW)
@@ -109,10 +109,15 @@ WEAKFUNC(SQLTablePrivileges)
 WEAKFUNC(SQLTablePrivilegesW)
 WEAKFUNC(SQLTables)
 WEAKFUNC(SQLTablesW)
+WEAKFUNC(SQLInstallerError)
+WEAKFUNC(SQLInstallerErrorW)
 
 WEAKFUNC_BOOL(SQLConfigDataSource)
+WEAKFUNC_BOOL(SQLConfigDataSourceW)
 WEAKFUNC_BOOL(SQLReadFileDSN)
+WEAKFUNC_BOOL(SQLReadFileDSNW)
 WEAKFUNC_BOOL(SQLWriteFileDSN)
+WEAKFUNC_BOOL(SQLWriteFileDSNW)
 
 /* Library initializer and finalizer. */
 
@@ -170,6 +175,12 @@ ruby_odbc_fini()
 	dlclose(lib_odbc);
 	lib_odbc = 0;
     }
+}
+
+int
+ruby_odbc_have_func(char *name, void *addr)
+{
+    return name && addr && (dlsym(NULL, name) != addr);
 }
 
 #endif

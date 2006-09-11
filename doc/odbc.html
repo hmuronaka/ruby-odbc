@@ -27,7 +27,7 @@
   <body>
     <h1><a name="reference">Ruby ODBC Reference</a></h1>
     <div class = "lastmodifed">
-      Last update: Wed, 28 June 2006
+      Last update: Fri, 08 September 2006
     </div>
     <hr>
     <div>
@@ -515,10 +515,11 @@
 	<dd>Returns an <a href="#ODBC::Statement">ODBC::Statement</a> with
 	  information of all or some (<var>pattern</var> String given)
 	  tables of the data source.
-	<dt><a name="columns"><code>columns([<var>table</var>])</code></a>
+	<dt><a name="columns"><code>columns([<var>table</var>[,<var>column</var>]])</code></a>
 	<dd>Returns an <a href="#ODBC::Statement">ODBC::Statement</a>
 	  with column information
-	  of the given <var>table</var> (String).
+	  of the given <var>table</var> (String) and optional
+	  <var>column</var> (String).
 	<dt><a name="indexes">
 	  <code>indexes([<var>table</var>[,<var>unique</var>]])</code></a>
 	<dd>Returns an <a href="#ODBC::Statement">ODBC::Statement</a>
@@ -767,21 +768,28 @@ addcust.call("J.R. User", 9999)
 	<dd>Same as <code>fetch_many</code> except that all remaining rows
 	  are returned.
 	<dt><a name="fetch_hash">
-	    <code>fetch_hash(<var>with_table_names=false</var>)</code></a>
+	    <code>fetch_hash(<var>with_table_names=false</var>,<var>use_sym=false</var>)</code></a>
 	<dd>Returns the next row of the query result as a hash keyed by
 	  column names. If <var>with_table_names</var> is true,
 	  the keys are combined table/column names. For uniqueness of keys
 	  the same rules as in the <a href="#columns1"><code>columns</code></a>
-	  method are applied.
+	  method are applied. If <var>use_sym</var> is true,
+	  the keys are formed by intern'ing the (table and) column names.
+	  Alternatively, one hash argument can be presented to
+	  <code>fetch_hash</code>, e.g.
+	  <code>{ :key => :Symbol, :table_names => false }</code> or
+	  <code>{ :key => :String, :table_names => true }</code> or
+	  <code>{ :key => :Fixnum }</code>.
 	<dt><a name="each"><code>each {|<var>row</var>|
 	      <var>block</var>}</code></a>
 	<dd>Iterates over the query result, performing a <code>fetch</code>
 	  for each row.
 	<dt><a name="each_hash">
-	    <code>each_hash(<var>with_table_names=false</var>)
+	    <code>each_hash(<var>with_table_names=false</var>,<var>use_sym=false</var>)
 	      {|<var>row</var>| <var>block</var>}</code></a>
 	<dd>Iterates over the query result, performing a
-	  <code>fetch_hash</code> for each row.
+	  <code>fetch_hash</code> for each row. The same
+	  rules for arguments as in <code>fetch_hash</code> apply.
 	<dt><a name="execute"><code>execute([<var>args...</var>])</code></a>
 	<dd>Binds <var>args</var> to current query and executes it.
 	<dt><a name="stmt_run">
@@ -1164,10 +1172,10 @@ INTERN (1) [RubyODBC]Programmer forgot to RTFM</pre>
 	<code>ODBC::Statement.nparams</code><br>
 	<code>ODBC::Statement.fetch!</code><br>
 	<code>ODBC::Statement.fetch_first!</code><br>
-	<code>ODBC::Statement.fetch_first_hash(<var>with_table_names=false</var>)
+	<code>ODBC::Statement.fetch_first_hash(<var>with_table_names=false</var>,<var>use_sym=false</var>)
 	  </code><br>
 	<code>ODBC::Statement.fetch_scroll!(<var>direction</var>,<var>offset=1</var>)</code><br>
-	<code>ODBC::Statement.fetch_hash!(<var>with_table_names=false</var>)
+	<code>ODBC::Statement.fetch_hash!(<var>with_table_names=false</var>,<var>use_sym=false</var>)
 	  </code><br>
 	<code>ODBC::Statement.make_proc(<var>stmt</var>)</code><br><br>
 	<code>ODBC::Parameter ...</code><br><br>

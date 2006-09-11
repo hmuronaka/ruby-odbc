@@ -97,6 +97,12 @@ elsif (testdlopen && PLATFORM !~ /(macos|darwin)/ && CONFIG["CC"] =~ /gcc/ && ha
   $CPPFLAGS+=" -DHAVE_SQLCONFIGDATASOURCE"
   $CPPFLAGS+=" -DHAVE_SQLINSTALLERERROR"
   $CPPFLAGS+=" -DUSE_DLOPEN_FOR_ODBC_LIBS"
+  # but test the UNICODE installer functions
+  # in case we need to provide fwd declarations
+  have_func("SQLConfigDataSourceW", "odbcinst.h")
+  have_func("SQLWriteFileDSNW", "odbcinst.h")
+  have_func("SQLReadFileDSNW", "odbcinst.h")
+  have_func("SQLInstallerErrorW", "odbcinst.h")
 else
   have_library("odbc", "SQLAllocConnect") ||
     have_library("iodbc", "SQLAllocConnect")

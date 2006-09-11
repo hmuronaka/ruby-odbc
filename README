@@ -1,6 +1,6 @@
-# $Id: README,v 1.29 2006/08/05 07:53:20 chw Exp chw $
+# $Id: README,v 1.30 2006/09/11 05:44:39 chw Exp chw $
 
-ruby-odbc-0.9991
+ruby-odbc-0.9992
 
 This is an ODBC binding for Ruby. So far it has been tested with
 
@@ -35,7 +35,7 @@ Installation:
 
     --enable/disble-dlopen turns on/off special initialization
     code to make ruby-odbc agnostic to unixODBC/iODBC driver
-    manager shared library names when GCC is used for compile
+    manager shared library names when GCC is used for compile.
     In cases where unixODBC or iODBC is installed in non-standard
     locations, use the option --with-odbc-dir=<non-standard-location>
     when running extconf.rb
