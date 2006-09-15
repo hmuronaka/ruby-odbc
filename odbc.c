@@ -8,7 +8,7 @@
  * and redistribution of this file and for a
  * DISCLAIMER OF ALL WARRANTIES.
  *
- * $Id: odbc.c,v 1.53 2006/09/08 16:54:07 chw Exp chw $
+ * $Id: odbc.c,v 1.55 2006/09/15 07:26:41 chw Exp chw $
  */
 
 #undef ODBCVER
@@ -1502,7 +1502,7 @@ conf_dsn(int argc, VALUE *argv, VALUE self, int op)
 	sdrv = (SQLWCHAR *) STR2CSTR(drv);
 	sastr = (SQLWCHAR *) STR2CSTR(astr);
 	if (SQLConfigDataSource(NULL, (WORD) op,
-				(SQLCHAR *) sdrv, (SQLCHAR *) sastr)) {
+				(LPCSTR) sdrv, (LPCSTR) sastr)) {
 	    return Qnil;
 	}
     }
@@ -1616,8 +1616,8 @@ nomem:
 	if (val != Qnil) {
 	    sval = (SQLWCHAR *) STR2CSTR(val);
 	}
-	if (SQLWriteFileDSN((SQLCHAR *) sfname, (SQLCHAR *) saname,
-			    (SQLCHAR *) skname, (SQLCHAR *) sval)) {
+	if (SQLWriteFileDSN((LPCSTR) sfname, (LPCSTR) saname,
+			    (LPCSTR) skname, (LPCSTR) sval)) {
 	    return Qnil;
 	}
     }
@@ -1693,8 +1693,8 @@ dbc_rfdsn(int argc, VALUE *argv, VALUE self)
 	saname = (SQLWCHAR *) STR2CSTR(aname);
 	skname = (SQLWCHAR *) STR2CSTR(kname);
 	valbuf[0] = '\0';
-	if (SQLReadFileDSN((SQLCHAR *) sfname, (SQLCHAR *) saname,
-			   (SQLCHAR *) skname, (SQLCHAR *) valbuf,
+	if (SQLReadFileDSN((LPCSTR) sfname, (LPCSTR) saname,
+			   (LPCSTR) skname, (LPSTR) valbuf,
 			   sizeof (valbuf), NULL)) {
 	    return rb_tainted_str_new2((char *) valbuf);
 	}

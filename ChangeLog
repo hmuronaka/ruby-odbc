@@ -1,6 +1,12 @@
 ODBC binding for Ruby
 ---------------------
 
+Fri Sep 15 2006 version 0.9993 released
+
+	* more tweaks in extconf.rb for --enable-dlopen'ed utf8 version
+	  thanks Daigo Moriwaki for testing
+	* eliminated warnings for installer functions 
+
 Mon Sep 11 2006 version 0.9992 released
 
 	* added parameter "column" in ODBC::Database::columns

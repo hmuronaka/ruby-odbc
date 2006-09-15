@@ -13,6 +13,27 @@ def have_library_ex(lib, func="main", headers=nil)
     end
   end
 end
+
+def try_func_nolink(func, libs, headers = nil, &b)
+  headers = cpp_include(headers)
+  try_compile(<<"SRC", libs, &b)
+#{COMMON_HEADERS}
+#{headers}
+/*top*/
+int t() { void ((*volatile p)()); p = (void ((*)()))#{func}; return 0; }
+SRC
+end
+
+def have_func_nolink(func, headers = nil, &b)
+  checking_for "#{func}()" do
+    if try_func_nolink(func, $libs, headers, &b)
+      $defs.push(format("-DHAVE_%s", func.upcase))
+      true
+    else
+      false
+    end
+  end
+end
  
 dir_config("odbc")
 have_header("sql.h") || begin
@@ -97,12 +118,12 @@ elsif (testdlopen && PLATFORM !~ /(macos|darwin)/ && CONFIG["CC"] =~ /gcc/ && ha
   $CPPFLAGS+=" -DHAVE_SQLCONFIGDATASOURCE"
   $CPPFLAGS+=" -DHAVE_SQLINSTALLERERROR"
   $CPPFLAGS+=" -DUSE_DLOPEN_FOR_ODBC_LIBS"
-  # but test the UNICODE installer functions
+  # but test the UNICODE installer functions w/o linking
   # in case we need to provide fwd declarations
-  have_func("SQLConfigDataSourceW", "odbcinst.h")
-  have_func("SQLWriteFileDSNW", "odbcinst.h")
-  have_func("SQLReadFileDSNW", "odbcinst.h")
-  have_func("SQLInstallerErrorW", "odbcinst.h")
+  have_func_nolink("SQLConfigDataSourceW", "odbcinst.h")
+  have_func_nolink("SQLWriteFileDSNW", "odbcinst.h")
+  have_func_nolink("SQLReadFileDSNW", "odbcinst.h")
+  have_func_nolink("SQLInstallerErrorW", "odbcinst.h")
 else
   have_library("odbc", "SQLAllocConnect") ||
     have_library("iodbc", "SQLAllocConnect")
