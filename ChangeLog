@@ -1,6 +1,14 @@
 ODBC binding for Ruby
 ---------------------
 
+Mon Dec 25 2006 version 0.9994 released
+
+	* improved doc on ODBC::Statement.*param*, ODBC::Parameter,
+	  and related ODBCProc
+	* added support for output/input-output parameters in queries,
+	  methods ODBC::Statement.param_iotype/param_output_type/
+	  param_output_size/param_output_value
+
 Fri Sep 15 2006 version 0.9993 released
 
 	* more tweaks in extconf.rb for --enable-dlopen'ed utf8 version

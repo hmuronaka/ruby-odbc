@@ -27,7 +27,7 @@
   <body>
     <h1><a name="reference">Ruby ODBC Reference</a></h1>
     <div class = "lastmodifed">
-      Last update: Fri, 08 September 2006
+      Last update: Mon, 25 December 2006
     </div>
     <hr>
     <div>
@@ -49,7 +49,7 @@
 	  is described <a href="#ODBC::Error">here</a>.
 	  Retrieving this message as well as subsequent succeeding ODBC
 	  method invocations do not clear the message. Use the
-	  <a href="#OBDC::clear_error"><code>clear_error</code></a>
+	  <a href="#OBDC::clear_error"><code>clear_error</code></a> method
 	  for that purpose.
 	<dt><a name="ODBC::info"><code>info</code></a>
 	<dd>Returns the last driver/driver manager warning messages
@@ -58,7 +58,7 @@
 	  is described <a href="#ODBC::Error">here</a>.
 	  Retrieving this message as well as subsequent succeeding ODBC
 	  method invocations do not clear the message. Use the
-	  <a href="#OBDC::clear_error"><code>clear_error</code></a>
+	  <a href="#OBDC::clear_error"><code>clear_error</code></a> method
 	  for that purpose.
 	<dt><a name="ODBC::clear_error"><code>clear_error</code></a>
 	<dd>Resets the last driver/driver manager error and warning messages
@@ -101,10 +101,10 @@
 	  </dl>
       </dl>
       <h3>constants:</h3>
-      <P>
+      <p>
 	Some constants of the ODBC API are defined in order to set connection
 	options, to deal with SQL data types, and to obtain database meta data.
-      </P>
+      </p>
       <dl>
 	<dt>Cursor behaviour:
 	<dd><var>SQL_CURSOR_FORWARD_ONLY</var>,
@@ -149,6 +149,18 @@
 	  <var>SQL_TINYINT</var>,
 	  <var>SQL_BIT</var>,
 	  <var>SQL_GUID</var>
+	<dt>Parameter related:
+	<dd><var>SQL_PARAM_TYPE_UNKNOWN</var>,
+	  <var>SQL_PARAM_INPUT</var>,
+	  <var>SQL_PARAM_OUTPUT</var>,
+	  <var>SQL_PARAM_INPUT_OUTPUT</var>,
+	  <var>SQL_DEFAULT_PARAM</var>
+	  <var>SQL_RETURN_VALUE</var>
+	<dt>Procedure related:
+	<dd><var>SQL_RESULT_COL</var>,
+	  <var>SQL_PT_UNKNOWN</var>,
+	  <var>SQL_PT_PROCEDURE</var>,
+	  <var>SQL_PT_FUNCTION</var>
 	<dt>Environment attributes:
 	<dd><var>SQL_CP_OFF</var>,
 	  <var>SQL_CP_ONE_PER_DRIVER</var>,
@@ -160,7 +172,7 @@
 	  <var>SQL_OV_ODBC2</var>,
 	  <var>SQL_OV_ODBC3</var>
 	<dt>Info types for
-          <a href=#ODBC::Database.get_info>ODBC::Database.get_info</a>
+          <a href=#get_info><code>ODBC::Database.get_info</code></a>
           yielding integer results:
 	<dd><var>SQL_ACTIVE_ENVIRONMENTS</var>,
           <var>SQL_ACTIVE_CONNECTIONS</var>,
@@ -219,7 +231,7 @@
 	  <var>SQL_SQL_CONFORMANCE</var>,
 	  <var>SQL_TXN_CAPABLE</var>
 	<dt>Info types for
-          <a href=#ODBC::Database.get_info>ODBC::Database.get_info</a>
+          <a href=#get_info><code>ODBC::Database.get_info</code></a>
           yielding bitmasks (integer results):
         <dd><var>SQL_AGGREGATE_FUNCTIONS</var>,
           <var>SQL_ALTER_DOMAIN</var>,
@@ -316,7 +328,7 @@
           <var>SQL_TXN_ISOLATION_OPTION</var>,
           <var>SQL_UNION</var>
 	<dt>Info types for
-          <a href=#ODBC::Database.get_info>ODBC::Database.get_info</a>
+          <a href=#get_info><code>ODBC::Database.get_info</code></a>
           yielding strings:
         <dd><var>SQL_ACCESSIBLE_PROCEDURES</var>,
           <var>SQL_ACCESSIBLE_TABLES</var>,
@@ -362,11 +374,11 @@
           <var>SQL_USER_NAME</var>,
           <var>SQL_XOPEN_CLI_YEAR</var>
 	<dt>Options for
-          <a href="#dbc_get_option">ODBC::Database.get_option</a>,
-          <a href="#dbc_set_option">ODBC::Database.set_option</a>,
-          <a href="#stmt_get_option">ODBC::Statement.get_option</a>,
+          <a href="#dbc_get_option"><code>ODBC::Database.get_option</code></a>,
+          <a href="#dbc_set_option"><code>ODBC::Database.set_option</code></a>,
+          <a href="#stmt_get_option"><code>ODBC::Statement.get_option</code></a>,
 	  and	  
-          <a href="#stmt_set_option">ODBC::Statement.set_option</a>
+          <a href="#stmt_set_option"><code>ODBC::Statement.set_option</code></a>
           yielding integers:
 	<dd><var>SQL_AUTOCOMMIT</var>,
 	  <var>SQL_CONCURRENCY</var>,
@@ -390,12 +402,12 @@
       <dl>
 	<dt><a name="ODBC::Object.error"><code>error</code></a>
         <dd>Returns the last error message (String) or nil. For further
-	  information see <a href="#ODBC::error"><code>ODBC::error</code></a>.
+	  information see <a href="#ODBC::error">ODBC::error</a>.
         <dt><a name="ODBC::Object.info"><code>info</code></a>
 	<dd>Returns the last driver/driver manager warning messages
 	  (String array) or nil.
 	  For further information see
-	  <a href="#ODBC::error"><code>ODBC::error</code></a>.
+	  <a href="#ODBC::error">ODBC::error</a>.
 	<dt><a name="ODBC::Object.clear_error"><code>clear_error</code></a>
 	<dd>Resets the last driver/driver manager error and warning messages
 	  to nil.
@@ -409,12 +421,12 @@
         <dt><a name="ODBC::Object.error2"><code>error</code></a>
 	<dd>Returns the last error message (String array) or nil.
 	  For further information see
-	  <a href="#ODBC::error"><code>ODBC::error</code></a>.
+	  <a href="#ODBC::error">ODBC::error</a>.
         <dt><a name="ODBC::Object.info2"><code>info</code></a>
 	<dd>Returns the last driver/driver manager warning messages
 	  (String array) or nil.
 	  For further information see
-	  <a href="#ODBC::error"><code>ODBC::error</code></a>.
+	  <a href="#ODBC::error">ODBC::error</a>.
 	<dt><a name="ODBC::Object.clear_error2"><code>clear_error</code></a>
 	<dd>Resets the last driver/driver manager error and warning messages
 	  to nil.
@@ -509,7 +521,7 @@
 	<dd>Returns a new <a href="#ODBC::Statement">ODBC::Statement</a>
 	 object without preparing or executing a SQL statement. This allows
 	 to use
-	 <a href="#stmt_set_option">ODBC::Statement.set_option</a>
+	 <a href="#stmt_set_option"><code>ODBC::Statement.set_option</code></a>
 	 to set special options on the statement before actual execution.
 	<dt><a name="tables"><code>tables([<var>pattern</var>])</code></a>
 	<dd>Returns an <a href="#ODBC::Statement">ODBC::Statement</a> with
@@ -582,13 +594,14 @@
 	  from <var>args</var> and returns an
 	  <a href="#ODBC::Statement">ODBC::Statement</a>.
 	<dt><a name="do"><code>do(<var>sql</var>[,<var>args...</var>])</code></a>
-	<dd>Prepares and executes the query as in <a href="#run">run</a>,
+	<dd>Prepares and executes the query as in
+	  <a href="#run"><code>run</code></a>,
 	  but returns the number of result rows and automatically drops
 	  the statement. Useful for SQL insert, delete, or update statements.
 	<dt><a name="prepare"><code>prepare(<var>sql</var>)</code></a>
 	<dd>Prepares the query specified by <var>sql</var> and returns
 	  an <a href="#ODBC::Statement">ODBC::Statement</a>.
-	<dt><a name="proc"><code>proc(<var>sql</var>)
+	<dt><a name="proc"><code>proc(<var>sql</var>,[<var>type</var>,<var>size</var>[,<var>n</var>=1]])
 	      {|<var>stmt</var>| <var>block</var>}</code></a>
 	<dd>Prepares the query specified by <var>sql</var> within a
 	  <a href="#ODBCProc">ODBCProc</a> and returns that procedure.
@@ -605,6 +618,26 @@ addcust = dbc.proc("insert into customer values(?, ?)") { |stmt|
 addcust.call("J.R. User", 9999)
 
 # alternative to call: addcust["J.R. User", 9999]</pre>
+	  The optional arguments <var>type</var>, <var>size</var>, and
+	  <var>n</var>,
+	  make the n-th statement parameter into an output parameter
+	  with that given ODBC data type and size. That statement
+	  parameter must be omitted when the <a href="#ODBCProc">ODBCProc</a>
+	  is called. This can be useful for wrapping stored procedures, e.g.
+	  <pre># wrap statement with output parameter
+
+aproc = dbc.proc("{ ? = call stored_proc(?) }", ODBC::SQL_INTEGER, 4) {}
+
+# call this statement/procedure, output parameter is result
+
+result = aproc.call(99)
+
+# alternative to call: result = aproc[99]</pre>
+	  Finalization of an <a href="#ODBCProc">ODBCProc</a> can be
+	  done according to this code snippet
+	  <pre># aproc is wrapped statement, finalize it now
+
+aproc.statement.drop</pre>
 	<dt><a name="dbc_get_option">
 	    <code>get_option(<var>option</var>)</code></a>
 	<dd>Gets a connection level option. <var>option</var> can be a
@@ -669,12 +702,14 @@ addcust.call("J.R. User", 9999)
 	  </dl>
       </dl>
       <h3>Remarks:</h3>
-      The <a href="#run">run</a>, <a href="#prepare">prepare</a>,
-      <a href="#do">do</a>, and info methods
-      (e.g. <a href="#tables">tables</a>)
+      The <a href="#run"><code>run</code></a>,
+      <a href="#prepare"><code>prepare</code></a>,
+      <a href="#do"><code>do</code></a>, and info methods
+      (e.g. <a href="#tables"><code>tables</code></a>)
       can be invoked with a block. In this case the block is executed with
       the <a href="#ODBC::Statement">ODBC::Statement</a> as parameter. The
-      <a href="#run">run</a> and <a href="#do">do</a> methods use the ODBC API
+      <a href="#run"><code>run</code></a> and
+      <a href="#do"><code>do</code></a> methods use the ODBC API
       function <code>SQLExecDirect()</code> when the SQL statement has no
       parameters.
     </div>
@@ -682,13 +717,15 @@ addcust.call("J.R. User", 9999)
     <div>
       <h2><a name="ODBC::Statement">ODBC::Statement</a></h2>
       <p>
-	The class to represent the query result.  The object of this
-	class is created as the result of every query.  You may need to invoke the
-	close or drop methods for the finished object for better memory performance.
+	The class to represent a query and its query result.
+	The object of this class is created as the result of every query.
+	You may need to invoke the <a href="#close"><code>close</code></a>
+	or <a href="#drop"><code>drop</code></a> methods for the
+	finished object for better memory performance.
       </p>
       <p>
 	When underlying ODBC SQL functions report an error,
-	an <a href="#ODBC:Error">ODBC::Error</a>
+	an <a href="#ODBC::Error">ODBC::Error</a>
 	exception with a corresponding error message from the ODBC driver
 	manager and/or driver is raised.
       </p>
@@ -777,9 +814,9 @@ addcust.call("J.R. User", 9999)
 	  the keys are formed by intern'ing the (table and) column names.
 	  Alternatively, one hash argument can be presented to
 	  <code>fetch_hash</code>, e.g.
-	  <code>{ :key => :Symbol, :table_names => false }</code> or
-	  <code>{ :key => :String, :table_names => true }</code> or
-	  <code>{ :key => :Fixnum }</code>.
+	  <code>{ :key =&gt; :Symbol, :table_names =&gt; false }</code> or
+	  <code>{ :key =&gt; :String, :table_names =&gt; true }</code> or
+	  <code>{ :key =&gt; :Fixnum }</code>.
 	<dt><a name="each"><code>each {|<var>row</var>|
 	      <var>block</var>}</code></a>
 	<dd>Iterates over the query result, performing a <code>fetch</code>
@@ -835,12 +872,74 @@ addcust.call("J.R. User", 9999)
 	  escape clauses.
 	<dt><a name="stmt_rowsetsize"><code>rowsetsize</code></a>
 	<dd>Returns the number of rows in a rowset fetched internally by
-	  a call to SQLExtendedFetch (hardcoded to 1).
+	  a call to <var>SQLExtendedFetch</var> (hardcoded to 1).
+	<dt><a name="stmt_nparams"><code>nparams</code></a>
+	<dd>Returns the number of parameters of the statement.
+	<dt><a name="parameter"><code>parameter(<var>n</var>)</code></a>
+	<dd>Returns information of the n-th parameter of the query
+	  as <a href="#ODBC::Parameter">ODBC::Parameter</a>.
+	<dt><a name="parameters"><code>parameters</code></a>
+	<dd>Returns an array of
+	  <a href="#ODBC::Parameter">ODBC::Parameter</a>s describing
+	  all parameters of the query.
+	<dt><a name="stmt_param_type"><code>param_type(<var>n</var>[,<var>type</var>,<var>coldef</var>,<var>scale</var>])</code></a>
+	<dd>Allows to override the type of parameter <var>n</var>
+	and returns the current type. This can be useful
+	when the ODBC driver does not provide proper type information
+	on <var>SQLDescribeParam</var>.
+	<dt><a name="stmt_param_iotype"><code>param_iotype(<var>n</var>[,<var>iotype</var>])</code></a>
+	<dd>Allows to change the input/output type of parameter <var>n</var>
+	  and returns the current input/output type. By
+	  default, all parameters are <var>ODBC::SQL_PARAM_INPUT</var>.
+	  When calling a stored procedure in the statement, the output
+	  parameter must be altered using this method, e.g.
+	  <pre># assume 1st parameter is input, 2nd is output
+stmt = conn.prepare("call stored_proc( ?, ?)")
+# setup 2nd for output of an integer
+stmt.param_iotype(2, ODBC::SQL_PARAM_OUTPUT)
+stmt.param_output_type(2, ODBC::SQL_INTEGER)
+stmt.param_output_size(2, 4)
+# execute stmt and retrieve value of output parameter
+stmt.execute(42, nil)
+stmt.fetch_all
+out_value = stmt.param_output_value(2);</pre>
+	<dt><a name="stmt_param_output_type"><code>param_output_type(<var>n</var>[,<var>type</var>])</code></a>
+	<dd>Allows to change the SQL type of output parameter <var>n</var>
+	  and returns the current type. For further
+	  information see the sample code in the
+	  <a href="#stmt_param_iotype"><code>param_iotype</code></a> method.
+	<dt><a name="stmt_param_output_size"><code>param_output_size(<var>n</var>[,<var>size</var>])</code></a>
+	<dd>Allows to change the byte size of the buffer for output parameter
+	  <var>n</var> and returns the current size.
+	  For further information see the sample code in the
+	  <a href="#stmt_param_iotype"><code>param_iotype</code></a> method.
+	<dt><a name="stmt_param_output_value"><code>param_output_value(<var>n</var>)</code></a>
+	<dd>Returns the value of the output parameter <var>n</var>.
+	  For further information see the sample code in the
+	  <a href="#stmt_param_iotype"><code>param_iotype</code></a> method.
+	<dt><a name="make_proc1"><code>make_proc([<var>n</var>])</code></a>
+	<dd>Wraps the statement into a <a href="#ODBCProc">ODBCProc</a> object
+	  and returns that object. The optional <var>n</var> argument is
+	  the parameter number of the statement which is used as output
+	  parameter in the wrapped <a href="#ODBCProc">ODBCProc</a>. For
+	  further information refer to the samples in the description of
+	  <a href="#proc"><code>ODBC::Database.proc</code></a>.
+      </dl>
+      <h3>singleton methods:</h3>
+      <dl>
+	<dt><a name="make_proc2"><code>make_proc(<var>stmt</var>,[<var>n</var>])</code></a>
+	<dd>Wraps the statement <var>stmt</var> into a
+	  <a href="#ODBCProc">ODBCProc</a> object
+	  and returns that object. The optional <var>n</var> argument is
+	  the parameter number of the statement which is used as output
+	  parameter in the wrapped <a href="#ODBCProc">ODBCProc</a>. For
+	  further information refer to the samples in the description of
+	  <a href="#proc"><code>ODBC::Database.proc</code></a>.
       </dl>
       <h3>Remarks:</h3>
-      The <code><a href="#fetch">fetch</a></code>,
-      <code><a href="#fetch_hash">fetch_hash</a></code>,
-      and <code><a href="#execute">execute</a></code>
+      The <a href="#fetch"><code>fetch</code></a>,
+      <a href="#fetch_hash"><code>fetch_hash</code></a>,
+      and <a href="#execute"><code>execute</code></a>
       methods can be invoked with a block. In this case the block is
       executed with one row of the result set (<code>fetch</code> and
       <code>fetch_hash</code>) or with the
@@ -854,12 +953,13 @@ addcust.call("J.R. User", 9999)
     <hr>
     <div>
       <h2><a name="ODBC::Column">ODBC::Column</a></h2>
-      <P>
-	The class to represent information of a column of a query.
-	Objects of this class are created as result of the <code>column</code>
-	and <code>columns</code> methods of
+      <p>
+	The class to represent (read-only) information of a column of a query.
+	Objects of this class are created as result of the
+	<a href="#column"><code>column</code></a>
+	and <a href="#columns1"><code>columns</code></a> methods of
 	<a href="#ODBC::Statement">ODBC::Statement</a>.
-      </P>
+      </p>
       <h3>super class:</h3>
       <p>
 	<code><a href="#ODBC::Object">ODBC::Object</a></code>
@@ -892,9 +992,47 @@ addcust.call("J.R. User", 9999)
     </div>
     <hr>
     <div>
+      <h2><a name="ODBC::Parameter">ODBC::Parameter</a></h2>
+      <p>
+	The class to represent (read-only) information of a parameter of a
+	query.
+	Objects of this class are created as result of the
+	<a href="#parameter"><code>parameter</code></a> and
+	<a href="#parameters"><code>parameters</code><a> methods of
+	<a href="#ODBC::Statement">ODBC::Statement</a>.
+      </p>
+      <h3>super class:</h3>
+      <p>
+	<code><a href="#ODBC::Object">ODBC::Object</a></code>
+      </p>
+      <h3>methods:</h3>
+      <dl>
+	<dt><code>type</code></a>
+	<dd>Returns the parameter's type, e.g. ODBC::SQL_CHAR.
+	<dt><code>precision</code></a>
+	<dd>Returns the parameter's precision (Integer).
+	<dt><code>length</code></a>
+	<dd>Returns the parameter's scale (Integer).
+	<dt><code>nullable</code></a>
+	<dd>Returns the nullable state of the column (Boolean).
+	<dt><code>iotype</code></a>
+	<dd>Returns the parameter's input/output type,
+	  e.g. ODBC::SQL_PARAM_INPUT.
+	<dt><code>output_type</code></a>
+	<dd>Returns the parameter's output type, only useful when the
+	  parameter is an output parameter (ODBC::SQL_PARAM_OUTPUT or
+	  ODBC::SQL_PARAM_INPUT_OUTPUT).
+	<dt><code>output_size</code></a>
+	<dd>Returns the parameter's output buffer size, only useful when the
+	  parameter is an output parameter (ODBC::SQL_PARAM_OUTPUT).
+      </dl>
+    </div>
+    <hr>
+    <div>
       <h2><a name="ODBC::Date">ODBC::Date</a></h2>
       <p>
-	The class to represent a <code>SQL_DATE</code> column in a table.
+	The class to represent a <code>SQL_DATE</code> column in a table
+	or a <code>SQL_DATE</code> query parameter.
       </p>
       <h3>super class:</h3>
       <p>
@@ -941,7 +1079,8 @@ addcust.call("J.R. User", 9999)
     <div>
       <h2><a name="ODBC::Time">ODBC::Time</a></h2>
       <p>
-	The class to represent a <code>SQL_TIME</code> column in a table.
+	The class to represent a <code>SQL_TIME</code> column in a table
+	or a <code>SQL_TIME</code> query parameter.
       </p>
       <h3>super class:</h3>
       <p>
@@ -987,7 +1126,8 @@ addcust.call("J.R. User", 9999)
     <div>
       <h2><a name="ODBC::TimeStamp">ODBC::TimeStamp</a></h2>
       <p>
-	The class to represent a <code>SQL_TIMESTAMP</code> column in a table.
+	The class to represent a <code>SQL_TIMESTAMP</code> column in a table
+	or a <code>SQL_TIMESTAMP</code> query parameter.
       </p>
       <h3>super class:</h3>
       <p>
@@ -1044,12 +1184,12 @@ addcust.call("J.R. User", 9999)
     <hr>
     <div>
       <h2><a name="ODBC::DSN">ODBC::DSN</a></h2>
-      <P>
+      <p>
 	The class to represent a data source name. Objects of this class are
 	created as result of a
-	<a href="#ODBC::datasources">ODBC::datasources</a>
+	<a href="#ODBC::datasources"><code>ODBC::datasources</code></a>
 	module function call.
-      </P>
+      </p>
       <h3>super class:</h3>
       <p>
 	<code><a href="#ODBC::Object">ODBC::Object</a></code>
@@ -1071,12 +1211,13 @@ addcust.call("J.R. User", 9999)
     <hr>
     <div>
       <h2><a name="ODBC::Driver">ODBC::Driver</a></h2>
-      <P>
+      <p>
 	The class to represent an ODBC driver with name and attributes.
 	Objects of this class are
-	created as result of a <a href="#ODBC::drivers">ODBC::drivers</a>
+	created as result of a
+	<a href="#ODBC::drivers"><code>ODBC::drivers</code></a>
 	module function call.
-      </P>
+      </p>
       <h3>super class:</h3>
       <p>
 	<code><a href="#ODBC::Object">ODBC::Object</a></code>
@@ -1099,12 +1240,12 @@ addcust.call("J.R. User", 9999)
     <div>
       <hr>
       <h2><a name="ODBCProc">ODBCProc</a></h2>
-      <P>
+      <p>
 	The class to represent a procedure with ODBC database/statement
 	context.
 	Objects of this class are created as result of a
-	<a href="#proc">ODBC::Database.proc</a> method call.
-      </P>
+	<a href="#proc"><code>ODBC::Database.proc</code></a> method call.
+      </p>
       <h3>super class:</h3>
       <p>
 	<code>Proc</a></code>
@@ -1114,7 +1255,8 @@ addcust.call("J.R. User", 9999)
 	<dt><a name="call"><code>call([<var>args*</var>])</code></a>
 	<dd>Executes the SQL statement with parameters set from <var>args</var>
 	  and then invokes the procedure's block, setting the block's
-	  parameter to the <a href="#ODBC::Statement">ODBC::Statement</a>.
+	  single parameter to the
+	   <a href="#ODBC::Statement">ODBC::Statement</a>.
 	<dt><code>[[<var>args*</var>]]</code>
 	<dd>Synonym for <code>call</code>.
       </dl> 
@@ -1122,7 +1264,7 @@ addcust.call("J.R. User", 9999)
     <div>
       <hr>
       <h2><a name="ODBC::Error">ODBC::Error</a></h2>
-      <P>
+      <p>
 	The class to represent ODBC related exceptions. The descriptive
 	string is made up of the first ODBC driver or driver manager
 	message as concatenation of SQL state, native error, driver manager
@@ -1137,7 +1279,7 @@ INTERN (0) [RubyODBC]No connection</pre>
 	the descriptive string starts with 'INTERN' and native error 1,
 	e.g. <pre>
 INTERN (1) [RubyODBC]Programmer forgot to RTFM</pre>
-      </P>
+      </p>
       <h3>super class:</h3>
       <p>
 	<code>StandardError</a></code>
@@ -1147,39 +1289,23 @@ INTERN (1) [RubyODBC]Programmer forgot to RTFM</pre>
       <hr>
       <h2>Undocumented</h2>
       <h3>Use The Source, Luke!</h3>
-      <P>
-	<code>ODBC::add_dsn(<var>driver</var>,<var>issys=false</var>)
-	  </code><br>
-	<code>ODBC::add_dsn(<var>name</var>,<var>attrs</var>,<var>issys=false</var>)
-	  </code><br>
-	<code>ODBC::config_dsn(<var>driver</var>,<var>issys=false</var>)
-	  </code><br>
-	<code>ODBC::config_dsn(<var>name</var>,<var>attrs</var>,<var>issys=false</var>)
-	  </code><br>
-	<code>ODBC::del_dsn(<var>driver</var>,<var>issys=false</var>)
-	  </code><br>
-	<code>ODBC::del_dsn(<var>name</var>,<var>attrs</var>,<var>issys=false</var>)
-	  </code><br>
-	<code>ODBC::write_file_dsn(<var>filename</var>,<var>appname</var>,<var>key</var>[,<var>value</var>])
-	  </code><br>
-	<code>ODBC::read_file_dsn(<var>filename</var>,<var>appname</var>,<var>key</var>)
-	  </code><br>
+      <p>
+	<code>ODBC::add_dsn(<var>driver</var>,<var>issys=false</var>)</code><br>
+	<code>ODBC::add_dsn(<var>name</var>,<var>attrs</var>,<var>issys=false</var>)</code><br>
+	<code>ODBC::config_dsn(<var>driver</var>,<var>issys=false</var>)</code><br>
+	<code>ODBC::config_dsn(<var>name</var>,<var>attrs</var>,<var>issys=false</var>)</code><br>
+	<code>ODBC::del_dsn(<var>driver</var>,<var>issys=false</var>)</code><br>
+	<code>ODBC::del_dsn(<var>name</var>,<var>attrs</var>,<var>issys=false</var>)</code><br>
+	<code>ODBC::write_file_dsn(<var>filename</var>,<var>appname</var>,<var>key</var>[,<var>value</var>])</code><br>
+	<code>ODBC::read_file_dsn(<var>filename</var>,<var>appname</var>,<var>key</var>)</code><br>
 	<code>ODBC::trace([<var>mask</var>])</code><br>
 	<br>
-	<code>ODBC::Statement.parameter([<var>n</var>])</code><br>
-	<code>ODBC::Statement.parameters</code><br>
-	<code>ODBC::Statement.param_type(<var>n</var>[,<var>type</var>,<var>coldef</var>,<var>scale</var>])</code><br>
-	<code>ODBC::Statement.nparams</code><br>
 	<code>ODBC::Statement.fetch!</code><br>
 	<code>ODBC::Statement.fetch_first!</code><br>
-	<code>ODBC::Statement.fetch_first_hash(<var>with_table_names=false</var>,<var>use_sym=false</var>)
-	  </code><br>
+	<code>ODBC::Statement.fetch_first_hash(<var>with_table_names=false</var>,<var>use_sym=false</var>)</code><br>
 	<code>ODBC::Statement.fetch_scroll!(<var>direction</var>,<var>offset=1</var>)</code><br>
-	<code>ODBC::Statement.fetch_hash!(<var>with_table_names=false</var>,<var>use_sym=false</var>)
-	  </code><br>
-	<code>ODBC::Statement.make_proc(<var>stmt</var>)</code><br><br>
-	<code>ODBC::Parameter ...</code><br><br>
-      </P>
+	<code>ODBC::Statement.fetch_hash!(<var>with_table_names=false</var>,<var>use_sym=false</var>)</code><br>
+      </p>
     <hr>
     <address>
       mailto:<a href="mailto:chw@ch-werner.de">Christian Werner</a>
