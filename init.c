@@ -1,12 +1,12 @@
 /*
  * Part of ODBC-Ruby binding
- * Copyright (c) 2006 Christian Werner <chw@ch-werner.de>
+ * Copyright (c) 2006-2007 Christian Werner <chw@ch-werner.de>
  *
  * See the file "COPYING" for information on usage
  * and redistribution of this file and for a
  * DISCLAIMER OF ALL WARRANTIES.
  *
- * $Id: init.c,v 1.4 2006/08/16 05:44:23 chw Exp chw $
+ * $Id: init.c,v 1.6 2007/04/07 09:39:08 chw Exp chw $
  */
 
 #include "ruby.h"
@@ -147,9 +147,15 @@ ruby_odbc_init()
 	    return;
 	}
     }
-    lib_odbc = dlopen("libodbc" DLEXT, RTLD_NOW | RTLD_GLOBAL);
+    lib_odbc = dlopen("libodbc" DLEXT ".1", RTLD_NOW | RTLD_GLOBAL);
     if (!lib_odbc) {
-	lib_odbc = dlopen("libiodbc" DLEXT, RTLD_NOW | RTLD_GLOBAL);
+	lib_odbc = dlopen("libodbc" DLEXT, RTLD_NOW | RTLD_GLOBAL);
+    }
+    if (!lib_odbc) {
+	lib_odbc = dlopen("libiodbc" DLEXT ".2", RTLD_NOW | RTLD_GLOBAL);
+	if (!lib_odbc) {
+	    lib_odbc = dlopen("libiodbc" DLEXT, RTLD_NOW | RTLD_GLOBAL);
+	}
 	if (!lib_odbc) {
 	    warn("WARNING: no ODBC driver manager found.\n");
 	    return;
@@ -157,8 +163,13 @@ ruby_odbc_init()
 	useiodbc = 1;
     }
     lib_odbcinst = dlopen(useiodbc ?
-			  "libiodbcinst" DLEXT : "libodbcinst" DLEXT,
+			  "libiodbcinst" DLEXT ".2" : "libodbcinst" DLEXT ".1",
 			  RTLD_NOW | RTLD_GLOBAL);
+    if (!lib_odbcinst) {
+	lib_odbcinst = dlopen(useiodbc ?
+			      "libiodbcinst" DLEXT : "libodbcinst" DLEXT,
+			      RTLD_NOW | RTLD_GLOBAL);
+    }
     if (!lib_odbcinst) {
 	warn("WARNING: no ODBC installer library found.\n");
     }

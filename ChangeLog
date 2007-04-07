@@ -1,6 +1,13 @@
 ODBC binding for Ruby
 ---------------------
 
+Sat Apr 07 2007 version 0.9995 released
+
+	* init.c: prefer libiodbc.so.2 over libiodbc.so and
+	  libodbc.so.1 over libodbc.so and same logic for
+	  the installer shared library
+	* no exception thrown on stale HSTMT for ODBC::Statement.nrows
+
 Mon Dec 25 2006 version 0.9994 released
 
 	* improved doc on ODBC::Statement.*param*, ODBC::Parameter,

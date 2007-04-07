@@ -1,6 +1,6 @@
 /*
  * ODBC-Ruby binding
- * Copyright (c) 2001-2006 Christian Werner <chw@ch-werner.de>
+ * Copyright (c) 2001-2007 Christian Werner <chw@ch-werner.de>
  * Portions copyright (c) 2004 Ryszard Niewisiewicz <micz@fibernet.pl>
  * Portions copyright (c) 2006 Carl Blakeley <cblakeley@openlinksw.co.uk>
  *
@@ -8,7 +8,7 @@
  * and redistribution of this file and for a
  * DISCLAIMER OF ALL WARRANTIES.
  *
- * $Id: odbc.c,v 1.56 2006/12/25 10:24:43 chw Exp chw $
+ * $Id: odbc.c,v 1.58 2007/04/07 09:39:08 chw Exp chw $
  */
 
 #undef ODBCVER
@@ -5259,11 +5259,12 @@ static VALUE
 stmt_nrows(VALUE self)
 {
     STMT *q;
-    SQLLEN rows;
+    SQLLEN rows = 0;
     char *msg;
 
     Data_Get_Struct(self, STMT, q);
-    if (!succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt,
+    if (q->hstmt != SQL_NULL_HSTMT &&
+	!succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt,
 		   SQLRowCount(q->hstmt, &rows), &msg, "SQLRowCount")) {
 	rb_raise(Cerror, "%s", msg);
     }
@@ -5840,7 +5841,11 @@ do_fetch(STMT *q, int mode)
 	curlen = q->coltypes[i].size;
 	if (curlen == SQL_NO_TOTAL) {
 	    totlen = 0;
+#ifdef UNICODE
+	    valp = ALLOC_N(char, SEGSIZE + sizeof (SQLWCHAR));
+#else
 	    valp = ALLOC_N(char, SEGSIZE + 1);
+#endif
 	    freep = valp;
 	    while (curlen == SQL_NO_TOTAL || curlen > SEGSIZE) {
 		SQLRETURN rc;
@@ -5878,7 +5883,11 @@ do_fetch(STMT *q, int mode)
 		    totlen += curlen;
 		    break;
 		}
-		REALLOC_N(valp, char, totlen + SEGSIZE);
+#ifdef UNICODE
+		REALLOC_N(valp, char, totlen + SEGSIZE + sizeof (SQLWCHAR));
+#else
+		REALLOC_N(valp, char, totlen + SEGSIZE + 1);
+#endif
 		if (valp == NULL) {
 		    if (freep != NULL) {
 			xfree(freep);
@@ -7563,6 +7572,7 @@ Init_odbc()
 
     /* module functions */
     rb_define_module_function(Modbc, "trace", mod_trace, -1);
+    rb_define_module_function(Modbc, "trace=", mod_trace, -1);
     rb_define_module_function(Modbc, "connect", mod_connect, -1);
     rb_define_module_function(Modbc, "datasources", dbc_dsns, 0);
     rb_define_module_function(Modbc, "drivers", dbc_drivers, 0);
