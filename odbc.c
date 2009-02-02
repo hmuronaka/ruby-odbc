@@ -1,6 +1,6 @@
 /*
  * ODBC-Ruby binding
- * Copyright (c) 2001-2007 Christian Werner <chw@ch-werner.de>
+ * Copyright (c) 2001-2009 Christian Werner <chw@ch-werner.de>
  * Portions copyright (c) 2004 Ryszard Niewisiewicz <micz@fibernet.pl>
  * Portions copyright (c) 2006 Carl Blakeley <cblakeley@openlinksw.co.uk>
  *
@@ -8,7 +8,7 @@
  * and redistribution of this file and for a
  * DISCLAIMER OF ALL WARRANTIES.
  *
- * $Id: odbc.c,v 1.58 2007/04/07 09:39:08 chw Exp chw $
+ * $Id: odbc.c,v 1.60 2009/02/02 18:06:28 chw Exp chw $
  */
 
 #undef ODBCVER
@@ -19,7 +19,9 @@
 #include <stdarg.h>
 #include <ctype.h>
 #include "ruby.h"
+#ifdef HAVE_VERSION_H
 #include "version.h"
+#endif
 #ifdef HAVE_SQL_H
 #include <sql.h>
 #else
@@ -118,7 +120,8 @@ static SQLRETURN tracesql(SQLHENV henv, SQLHDBC hdbc, SQLHSTMT hstmt,
 #endif
 
 #ifndef SQL_SUCCEEDED
-#define SQL_SUCCEEDED(x) ((x) == SQL_SUCCESS || (x) == SQL_SUCCESS_WITH_INFO)
+#define SQL_SUCCEEDED(x) \
+    (((x) == SQL_SUCCESS) || ((x) == SQL_SUCCESS_WITH_INFO))
 #endif
 
 #ifndef SQL_NO_DATA
@@ -327,7 +330,7 @@ uc_strlen(SQLWCHAR *str)
     int len = 0;
 
     if (str != NULL) {
-	while (*str) {
+	while (*str != '\0') {
 	    ++len;
 	    ++str;
 	}
@@ -339,7 +342,7 @@ static SQLWCHAR *
 uc_strchr(SQLWCHAR *str, SQLWCHAR c)
 {
     if (str != NULL) {
-	while (*str && *str != c) {
+	while ((*str != '\0') && (*str != c)) {
 	    ++str;
 	}
 	str = (*str == c) ? str : NULL;
@@ -356,7 +359,7 @@ mkutf(char *dest, SQLWCHAR *src, int len)
     for (i = 0; i < len; i++) {
 	unsigned long c = src[i];
 
-	if (sizeof (SQLWCHAR) == 2 * sizeof (char)) {
+	if (sizeof (SQLWCHAR) == (2 * sizeof (char))) {
 	    c &= 0xffff;
 	}
 	if (c < 0xc0) {
@@ -365,11 +368,11 @@ mkutf(char *dest, SQLWCHAR *src, int len)
 	    *cp++ = 0xc0 | ((c >> 6) & 0x1f);
 	    *cp++ = 0x80 | (c & 0x3f);
 	} else if (c < 0x10000) {
-	    if (sizeof (SQLWCHAR) == 2 * sizeof (char) &&
-		c >= 0xd800 && c <= 0xdbff && i + 1 < len) {
+	    if ((sizeof (SQLWCHAR) == (2 * sizeof (char))) &&
+		(c >= 0xd800) && (c <= 0xdbff) && ((i + 1) < len)) {
 		unsigned long c2 = src[i + 1] & 0xffff;
 
-		if (c2 >= 0xdc00 && c <= 0xdfff) {
+		if ((c2 >= 0xdc00) && (c <= 0xdfff)) {
 		    c = ((c & 0x3ff) | ((c2 & 0x3ff) << 10)) + 0x10000;
 		    *cp++ = 0xf0 | ((c >> 18) & 0x07);
 		    *cp++ = 0x80 | ((c >> 12) & 0x3f);
@@ -413,7 +416,7 @@ uc_tainted_str_new(SQLWCHAR *str, int len)
     char *cp = xmalloc(len * 6 + 1);
     int ulen = 0;
 
-    if (cp != NULL && str != NULL) {
+    if ((cp != NULL) && (str != NULL)) {
 	ulen = mkutf(cp, str, len);
     }
     v = rb_tainted_str_new((cp != NULL) ? cp : "", ulen);
@@ -436,7 +439,7 @@ uc_str_new(SQLWCHAR *str, int len)
     char *cp = xmalloc(len * 6 + 1);
     int ulen = 0;
 
-    if (cp != NULL && str != NULL) {
+    if ((cp != NULL) && (str != NULL)) {
 	ulen = mkutf(cp, str, len);
     }
     v = rb_str_new((cp != NULL) ? cp : "", ulen);
@@ -459,7 +462,7 @@ uc_str_cat(VALUE v, SQLWCHAR *str, int len)
     char *cp = xmalloc(len * 6 + 1);
     int ulen = 0;
 
-    if (cp != NULL && str != NULL) {
+    if ((cp != NULL) && (str != NULL)) {
 	ulen = mkutf(cp, str, len);
     }
     if (cp != NULL) {
@@ -501,7 +504,8 @@ uc_from_utf(unsigned char *str, int len)
 			++str;
 		    }
 		} else if (c < 0xf0) {
-		    if ((str[1] & 0xc0) == 0x80 && (str[2] & 0xc0) == 0x80) {
+		    if (((str[1] & 0xc0) == 0x80) &&
+			((str[2] & 0xc0) == 0x80)) {
 			unsigned long t = ((c & 0x0f) << 12) |
 			    ((str[1] & 0x3f) << 6) | (str[2] & 0x3f);
 
@@ -512,14 +516,15 @@ uc_from_utf(unsigned char *str, int len)
 			++str;
 		    }
 		} else if (c < 0xf8) {
-		    if ((str[1] & 0xc0) == 0x80 && (str[2] & 0xc0) == 0x80 &&
-			(str[3] & 0xc0) == 0x80) {
+		    if (((str[1] & 0xc0) == 0x80) &&
+			((str[2] & 0xc0) == 0x80) &&
+			((str[3] & 0xc0) == 0x80)) {
 			unsigned long t = ((c & 0x03) << 18) |
 			    ((str[1] & 0x3f) << 12) | ((str[2] & 0x3f) << 6) |
 			    (str[4] & 0x3f);
 
-			if (sizeof (SQLWCHAR) == 2 * sizeof (char) &&
-			    t >= 0x10000) {
+			if ((sizeof (SQLWCHAR) == (2 * sizeof (char))) &&
+			    (t >= 0x10000)) {
 			    t -= 0x10000;
 			    uc[i++] = 0xd800 | (t & 0x3ff);
 			    t = 0xdc00 | ((t >> 10) & 0x3ff);
@@ -531,14 +536,16 @@ uc_from_utf(unsigned char *str, int len)
 			++str;
 		    }
 		} else if (c < 0xfc) {
-		    if ((str[1] & 0xc0) == 0x80 && (str[2] & 0xc0) == 0x80 &&
-			(str[3] & 0xc0) == 0x80 && (str[4] & 0xc0) == 0x80) {
+		    if (((str[1] & 0xc0) == 0x80) &&
+			((str[2] & 0xc0) == 0x80) &&
+			((str[3] & 0xc0) == 0x80) &&
+			((str[4] & 0xc0) == 0x80)) {
 			unsigned long t = ((c & 0x01) << 24) |
 			    ((str[1] & 0x3f) << 18) | ((str[2] & 0x3f) << 12) |
 			    ((str[4] & 0x3f) << 6) | (str[5] & 0x3f);
 
-			if (sizeof (SQLWCHAR) == 2 * sizeof (char) &&
-			    t >= 0x10000) {
+			if ((sizeof (SQLWCHAR) == (2 * sizeof (char))) &&
+			    (t >= 0x10000)) {
 			    t -= 0x10000;
 			    uc[i++] = 0xd800 | (t & 0x3ff);
 			    t = 0xdc00 | ((t >> 10) & 0x3ff);
@@ -929,7 +936,7 @@ get_err_or_info(SQLHENV henv, SQLHDBC hdbc, SQLHSTMT hstmt, int isinfo)
 #endif
 	    break;
 	case SQL_NO_DATA:
-	    if (v0 == Qnil && !isinfo) {
+	    if ((v0 == Qnil) && (!isinfo)) {
 		v = rb_str_new2("INTERN (0) [RubyODBC]No data found");
 	    } else {
 		v = Qnil;
@@ -945,7 +952,7 @@ get_err_or_info(SQLHENV henv, SQLHDBC hdbc, SQLHSTMT hstmt, int isinfo)
 	    done = 1;
 	    break;
 	default:
-	    sprintf(tmp, "INTERN (0) [RubyODBC]Unknown error %d", err);
+	    sprintf(tmp, "INTERN (0) [RubyODBC]Unknown error %d", (int) err);
 	    v = rb_str_new2(tmp);
 	    done = 1;
 	    break;
@@ -987,7 +994,7 @@ get_installer_err()
     WORD i, len;
     DWORD insterrcode;
 
-    for (i = 1; !done && i <= 8; i++) {
+    for (i = 1; (!done) && (i <= 8); i++) {
 	v = Qnil;
 #ifdef UNICODE
 #ifdef USE_DLOPEN_FOR_ODBC_LIBS
@@ -1038,7 +1045,7 @@ get_installer_err()
 	    break;
 	default:
 	    v = rb_str_new2("INTERN (0) [RubyODBC]");
-	    sprintf(buf, "Unknown installer error %d", err);
+	    sprintf(buf, "Unknown installer error %d", (int) err);
 	    v = rb_str_cat2(v, buf);
 	    done = 1;
 	    break;
@@ -1086,7 +1093,7 @@ trace_sql_ret(SQLRETURN ret)
 	p = "SQL_INVALID_HANDLE";
 	break;
     default:
-	sprintf(msg, "SQL_RETURN=%d", ret);
+	sprintf(msg, "SQL_RETURN=%d", (int) ret);
 	p = msg;
 	break;
     }
@@ -1143,6 +1150,27 @@ callsql(SQLHENV henv, SQLHDBC hdbc, SQLHSTMT hstmt, SQLRETURN ret, char *m)
 }
 
 static int
+succeeded_common(SQLHENV henv, SQLHDBC hdbc, SQLHSTMT hstmt, SQLRETURN ret,
+		 char **msgp)
+{
+    if (!SQL_SUCCEEDED(ret)) {
+	char *dummy;
+
+	if (msgp == NULL) {
+	    msgp = &dummy;
+	}
+	*msgp = get_err_or_info(henv, hdbc, hstmt, 0);
+	return 0;
+    }
+    if (ret == SQL_SUCCESS_WITH_INFO) {
+	get_err_or_info(henv, hdbc, hstmt, 1);
+    } else {
+	CVAR_SET(Cobj, IDatatinfo, Qnil);
+    }
+    return 1;
+}
+
+static int
 succeeded(SQLHENV henv, SQLHDBC hdbc, SQLHSTMT hstmt, SQLRETURN ret,
 	  char **msgp, char *m, ...)
 {
@@ -1159,21 +1187,31 @@ succeeded(SQLHENV henv, SQLHDBC hdbc, SQLHSTMT hstmt, SQLRETURN ret,
 	trace_sql_ret(ret);
     }
 #endif
-    if (!SQL_SUCCEEDED(ret)) {
-	char *dummy;
+    return succeeded_common(henv, hdbc, hstmt, ret, msgp);
+}
 
-	if (msgp == NULL) {
-	    msgp = &dummy;
-	}
-	*msgp = get_err_or_info(henv, hdbc, hstmt, 0);
-	return 0;
+static int
+succeeded_nodata(SQLHENV henv, SQLHDBC hdbc, SQLHSTMT hstmt, SQLRETURN ret,
+		 char **msgp, char *m, ...)
+{
+#ifdef TRACING
+    va_list args;
+
+    if (tracing & 1) {
+	va_start(args, m);
+	fprintf(stderr, "SQLCall: ");
+	vfprintf(stderr, m, args);
+	va_end(args);
+	fprintf(stderr, "\n  > HENV=0x%lx, HDBC=0x%lx, HSTMT=0x%lx\n",
+		(long) henv, (long) hdbc, (long) hstmt);
+	trace_sql_ret(ret);
     }
-    if (ret == SQL_SUCCESS_WITH_INFO) {
-	get_err_or_info(henv, hdbc, hstmt, 1);
-    } else {
+#endif
+    if (ret == SQL_NO_DATA) {
 	CVAR_SET(Cobj, IDatatinfo, Qnil);
+	return 1;
     }
-    return 1;
+    return succeeded_common(henv, hdbc, hstmt, ret, msgp);
 }
 
 /*
@@ -1295,7 +1333,7 @@ env_new(VALUE self)
     if (self == Cobj) {
 	self = Cenv;
     }
-    if (!SQL_SUCCEEDED(SQLAllocEnv(&henv)) || henv == SQL_NULL_HENV) {
+    if ((!SQL_SUCCEEDED(SQLAllocEnv(&henv))) || (henv == SQL_NULL_HENV)) {
 	rb_raise(Cerror, set_err("Cannot allocate SQLHENV", 0));
     }
     obj = Data_Make_Struct(self, ENV, NULL, free_env, e);
@@ -1410,7 +1448,7 @@ dbc_drivers(VALUE self)
 	for (attr = attrs; *attr; attr += uc_strlen(attr) + 1) {
 	    SQLWCHAR *p = uc_strchr(attr, (SQLWCHAR) '=');
 
-	    if (p != NULL && p != attr) {
+	    if ((p != NULL) && (p != attr)) {
 		rb_hash_aset(h,
 			     uc_tainted_str_new(attr, (p - attr) /
 						 sizeof (SQLWCHAR)),
@@ -1424,7 +1462,7 @@ dbc_drivers(VALUE self)
 	for (attr = attrs; *attr; attr += strlen(attr) + 1) {
 	    char *p = strchr(attr, '=');
 
-	    if (p != NULL && p != attr) {
+	    if ((p != NULL) && (p != attr)) {
 		rb_hash_aset(h, rb_tainted_str_new(attr, p - attr),
 			     rb_tainted_str_new2(p + 1));
 		count++;
@@ -1507,7 +1545,7 @@ conf_dsn(int argc, VALUE *argv, VALUE self, int op)
     if (have_w) {
 	sdrv = uc_from_utf((unsigned char *) STR2CSTR(drv), -1);
 	sastr = uc_from_utf((unsigned char *) STR2CSTR(astr), -1);
-	if (sdrv == NULL || sastr == NULL) {
+	if ((sdrv == NULL) || (sastr == NULL)) {
 	    uc_free(sdrv);
 	    uc_free(sastr);
 	    rb_raise(Cerror, set_err("Out of memory", 0));
@@ -1610,7 +1648,7 @@ dbc_wfdsn(int argc, VALUE *argv, VALUE self)
 	sfname = uc_from_utf((unsigned char *) STR2CSTR(fname), -1);
 	saname = uc_from_utf((unsigned char *) STR2CSTR(aname), -1);
 	skname = uc_from_utf((unsigned char *) STR2CSTR(kname), -1);
-	if (sfname == NULL || saname == NULL || skname == NULL) {
+	if ((sfname == NULL) || (saname == NULL) || (skname == NULL)) {
 nomem:
 	    uc_free(sfname);
 	    uc_free(saname);
@@ -1696,7 +1734,7 @@ dbc_rfdsn(int argc, VALUE *argv, VALUE self)
 	saname = uc_from_utf((unsigned char *) STR2CSTR(aname), -1);
 	skname = uc_from_utf((unsigned char *) STR2CSTR(kname), -1);
 	valbuf[0] = 0;
-	if (sfname == NULL || saname == NULL || skname == NULL) {
+	if ((sfname == NULL) || (saname == NULL) || (skname == NULL)) {
 	    uc_free(sfname);
 	    uc_free(saname);
 	    uc_free(skname);
@@ -1896,8 +1934,9 @@ dbc_connect(int argc, VALUE *argv, VALUE self)
 	spasswd = uc_from_utf((unsigned char *) STR2CSTR(passwd), -1);
     }
     sdsn = uc_from_utf((unsigned char *) STR2CSTR(dsn), -1);
-    if ((suser == NULL && user != Qnil) ||
-	(spasswd == NULL && passwd != Qnil) || sdsn == NULL) {
+    if (((suser == NULL) && (user != Qnil)) ||
+	((spasswd == NULL) && (passwd != Qnil)) ||
+	(sdsn == NULL)) {
 	uc_free(sdsn);
 	uc_free(suser);
 	uc_free(spasswd);
@@ -2005,8 +2044,7 @@ dbc_drvconnect(VALUE self, VALUE drv)
     if (!succeeded(e->henv, dbc, SQL_NULL_HSTMT,
 		   SQLDriverConnect(dbc, NULL, (SQLTCHAR *) sdrv, SQL_NTS,
 				    NULL, 0, NULL, SQL_DRIVER_NOPROMPT),
-		   &msg,
-		   "SQLDriverConnect")) {
+		   &msg, "SQLDriverConnect")) {
 #ifdef UNICODE
 	uc_free(sdrv);
 #endif
@@ -3005,16 +3043,14 @@ make_coltypes(SQLHSTMT hstmt, int ncols, char **msgp)
 		       SQLColAttributes(hstmt, ic,
 					SQL_COLUMN_TYPE, NULL, 0, NULL,
 					&type),
-		       msgp,
-		       "SQLColAttributes(SQL_COLUMN_TYPE)")) {
+		       msgp, "SQLColAttributes(SQL_COLUMN_TYPE)")) {
 	    return ret;
 	}
 	if (!succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, hstmt,
 		       SQLColAttributes(hstmt, ic,
 					SQL_COLUMN_DISPLAY_SIZE,
 					NULL, 0, NULL, &size),
-		       msgp,
-		       "SQLColAttributes(SQL_COLUMN_DISPLAY_SIZE)")) {
+		       msgp, "SQLColAttributes(SQL_COLUMN_DISPLAY_SIZE)")) {
 	    return ret;
 	}
     }
@@ -3166,8 +3202,7 @@ make_pinfo(SQLHSTMT hstmt, int nump, char **msgp)
 					&pinfo[i].type, &pinfo[i].coldef,
 					&pinfo[i].scale,
 					&pinfo[i].nullable),
-		       NULL,
-		       "SQLDescribeParam")) {
+		       NULL, "SQLDescribeParam")) {
 	    pinfo[i].type = SQL_VARCHAR;
 	    pinfo[i].coldef = 0;
 	    pinfo[i].scale = 0;
@@ -3181,7 +3216,7 @@ make_pinfo(SQLHSTMT hstmt, int nump, char **msgp)
 static void
 retain_pinfo_override(STMT *q, int nump, PINFO *pinfo)
 {
-    if (q->pinfo != NULL && q->nump == nump) {
+    if ((q->pinfo != NULL) && (q->nump == nump)) {
 	int i;
 
 	for (i = 0; i < nump; i++) {
@@ -3270,8 +3305,9 @@ make_result(VALUE dbc, SQLHSTMT hstmt, VALUE result, int mode)
 	}
     }
     if ((mode & MAKERES_PREPARE) ||
-	!succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, hstmt,
-		   SQLNumResultCols(hstmt, &cols), NULL, "SQLNumResultCols")) {
+	(!succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, hstmt,
+		   SQLNumResultCols(hstmt, &cols), NULL,
+		   "SQLNumResultCols"))) {
 	cols = 0;
     }
     if (cols > 0) {
@@ -3327,12 +3363,12 @@ error:
 static char *
 upcase_if(char *string, int upc)
 {
-    if (upc && string != NULL) {
+    if (upc && (string != NULL)) {
 	unsigned char *p = (unsigned char *) string;
 
 	while (*p != '\0') {
 #ifdef UNICODE
-	    if (*p < 0x80 && ISLOWER(*p))
+	    if ((*p < 0x80) && ISLOWER(*p))
 #else
 	    if (ISLOWER(*p))
 #endif
@@ -3372,8 +3408,7 @@ make_col(SQLHSTMT hstmt, int i, int upc)
 		   SQLColAttributes(hstmt, ic, SQL_COLUMN_LABEL, name,
 				    (SQLSMALLINT) sizeof (name),
 				    &name_len, NULL),
-		   &msg,
-		   "SQLColAttributes(SQL_COLUMN_LABEL)")) {
+		   &msg, "SQLColAttributes(SQL_COLUMN_LABEL)")) {
 	rb_raise(Cerror, "%s", msg);
     }
     obj = rb_obj_alloc(Ccolumn);
@@ -3395,7 +3430,7 @@ make_col(SQLHSTMT hstmt, int i, int upc)
 	}
 	mkutf(tmp, name, len);
 	rb_iv_set(obj, "@name", rb_tainted_str_new2(upcase_if(tmp, 1)));
-	if (tmp != NULL && tmp != tmpbuf) {
+	if ((tmp != NULL) && (tmp != tmpbuf)) {
 	    xfree(tmp);
 	}
     } else {
@@ -3410,8 +3445,7 @@ make_col(SQLHSTMT hstmt, int i, int upc)
 		  SQLColAttributes(hstmt, ic, SQL_COLUMN_TABLE_NAME, name,
 				   (SQLSMALLINT) sizeof (name),
 				   &name_len, NULL),
-		  NULL,
-		  "SQLColAttributes(SQL_COLUMN_TABLE_NAME)")) {
+		  NULL, "SQLColAttributes(SQL_COLUMN_TABLE_NAME)")) {
 	if (name_len > sizeof (name)) {
 	    name_len = sizeof (name) - 1;
 	}
@@ -3428,8 +3462,7 @@ make_col(SQLHSTMT hstmt, int i, int upc)
     if (succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, hstmt,
 		  SQLColAttributes(hstmt, ic, SQL_COLUMN_TYPE, NULL,
 				   0, NULL, &iv),
-		  NULL,
-		  "SQLColAttributes(SQL_COLUMN_TYPE)")) {
+		  NULL, "SQLColAttributes(SQL_COLUMN_TYPE)")) {
 	v = INT2NUM(iv);
     } else {
 	v = INT2NUM(SQL_UNKNOWN_TYPE);
@@ -3456,8 +3489,7 @@ make_col(SQLHSTMT hstmt, int i, int upc)
 			 SQLColAttributes(hstmt, ic,
 					  SQL_COLUMN_DISPLAY_SIZE, NULL,
 					  0, NULL, &iv),
-			 NULL,
-			 "SQLColAttributes(SQL_COLUMN_DISPLAY_SIZE)")) {
+			 NULL, "SQLColAttributes(SQL_COLUMN_DISPLAY_SIZE)")) {
 	v = INT2NUM(iv);
     }
     rb_iv_set(obj, "@length", v);
@@ -3465,8 +3497,7 @@ make_col(SQLHSTMT hstmt, int i, int upc)
     if (succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, hstmt,
 		  SQLColAttributes(hstmt, ic, SQL_COLUMN_NULLABLE, NULL,
 				   0, NULL, &iv),
-		  NULL,
-		  "SQLColAttributes(SQL_COLUMN_NULLABLE)")) {
+		  NULL, "SQLColAttributes(SQL_COLUMN_NULLABLE)")) {
 	v = (iv == SQL_NO_NULLS) ? Qfalse : Qtrue;
     }
     rb_iv_set(obj, "@nullable", v);
@@ -3474,8 +3505,7 @@ make_col(SQLHSTMT hstmt, int i, int upc)
     if (succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, hstmt,
 		  SQLColAttributes(hstmt, ic, SQL_COLUMN_SCALE, NULL,
 				   0, NULL, &iv),
-		  NULL,
-		  "SQLColAttributes(SQL_COLUMN_SCALE)")) {
+		  NULL, "SQLColAttributes(SQL_COLUMN_SCALE)")) {
 	v = INT2NUM(iv);
     }
     rb_iv_set(obj, "@scale", v);
@@ -3483,8 +3513,7 @@ make_col(SQLHSTMT hstmt, int i, int upc)
     if (succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, hstmt,
 		  SQLColAttributes(hstmt, ic, SQL_COLUMN_PRECISION, NULL,
 				   0, NULL, &iv),
-		  NULL,
-		  "SQLColAttributes(SQL_COLUMN_PRECISION)")) {
+		  NULL, "SQLColAttributes(SQL_COLUMN_PRECISION)")) {
 	v = INT2NUM(iv);
     }
     rb_iv_set(obj, "@precision", v);
@@ -3492,8 +3521,7 @@ make_col(SQLHSTMT hstmt, int i, int upc)
     if (succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, hstmt,
 		  SQLColAttributes(hstmt, ic, SQL_COLUMN_SEARCHABLE, NULL,
 				   0, NULL, &iv),
-		  NULL,
-		  "SQLColAttributes(SQL_COLUMN_SEARCHABLE)")) {
+		  NULL, "SQLColAttributes(SQL_COLUMN_SEARCHABLE)")) {
 	v = (iv == SQL_NO_NULLS) ? Qfalse : Qtrue;
     }
     rb_iv_set(obj, "@searchable", v);
@@ -3501,8 +3529,7 @@ make_col(SQLHSTMT hstmt, int i, int upc)
     if (succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, hstmt,
 		  SQLColAttributes(hstmt, ic, SQL_COLUMN_UNSIGNED, NULL,
 				   0, NULL, &iv),
-		  NULL,
-		  "SQLColAttributes(SQL_COLUMN_UNSIGNED)")) {
+		  NULL, "SQLColAttributes(SQL_COLUMN_UNSIGNED)")) {
 	v = (iv == SQL_NO_NULLS) ? Qfalse : Qtrue;
     }
     rb_iv_set(obj, "@unsigned", v);
@@ -3511,8 +3538,7 @@ make_col(SQLHSTMT hstmt, int i, int upc)
     if (succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, hstmt,
 		  SQLColAttributes(hstmt, ic, SQL_COLUMN_AUTO_INCREMENT, NULL,
 				   0, NULL, &iv),
-		  NULL,
-		  "SQLColAttributes(SQL_COLUMN_AUTO_INCREMENT)")) {
+		  NULL, "SQLColAttributes(SQL_COLUMN_AUTO_INCREMENT)")) {
 	v = (iv == SQL_FALSE) ? Qfalse : Qtrue;
     }
 #endif
@@ -3934,6 +3960,7 @@ do_attr(int argc, VALUE *argv, VALUE self, int op)
     SQLHENV henv = SQL_NULL_HENV;
     VALUE val;
     SQLLEN v = 0;
+    SQLPOINTER vp;
     SQLINTEGER l;
     char *msg;
 
@@ -3951,9 +3978,9 @@ do_attr(int argc, VALUE *argv, VALUE self, int op)
 	return rb_int2inum(v);
     }
     v = NUM2INT(val);
+    vp = (SQLPOINTER) v;
     if (!succeeded(henv, SQL_NULL_HDBC, SQL_NULL_HSTMT,
-		   SQLSetEnvAttr(henv, (SQLINTEGER) op, (SQLPOINTER) v,
-				 SQL_IS_INTEGER),
+		   SQLSetEnvAttr(henv, (SQLINTEGER) op, vp, SQL_IS_INTEGER),
 		   &msg, "SQLSetEnvAttr(%d)", op)) {
 	rb_raise(Cerror, "%s", msg);
     }
@@ -4111,8 +4138,8 @@ do_option(int argc, VALUE *argv, VALUE self, int isstmt, int op)
 	}
 	val = val2;
     }
-    if ((isstmt && !(level & OPT_LEVEL_STMT)) ||
-	(!isstmt && !(level & OPT_LEVEL_DBC))) {
+    if ((isstmt && (!(level & OPT_LEVEL_STMT))) ||
+	(!isstmt && (!(level & OPT_LEVEL_DBC)))) {
 	rb_raise(Cerror, set_err("Invalid option type for this level", 0));
 	return Qnil;
     }
@@ -4304,11 +4331,11 @@ scan_dtts(VALUE str, int do_d, int do_t, TIMESTAMP_STRUCT *ts)
     char c, *cstr = STR2CSTR(str);
 
     memset(ts, 0, sizeof (TIMESTAMP_STRUCT));
-    if ((sscanf(cstr, "{ts '%d-%d-%d %d:%d:%d.%d' %c",
-		&yy, &mm, &dd, &hh, &mmm, &ss, &ff, &c) == 8 ||
-	 sscanf(cstr, "{ts '%d-%d-%d %d:%d:%d' %c",
-		&yy, &mm, &dd, &hh, &mmm, &ss, &c) == 7) &&
-	 c == '}') {
+    if (((sscanf(cstr, "{ts '%d-%d-%d %d:%d:%d.%d' %c",
+		 &yy, &mm, &dd, &hh, &mmm, &ss, &ff, &c) == 8) ||
+	 (sscanf(cstr, "{ts '%d-%d-%d %d:%d:%d' %c",
+		 &yy, &mm, &dd, &hh, &mmm, &ss, &c) == 7)) &&
+	(c == '}')) {
 	ts->year = yy;
 	ts->month = mm;
 	ts->day = dd;
@@ -4318,15 +4345,17 @@ scan_dtts(VALUE str, int do_d, int do_t, TIMESTAMP_STRUCT *ts)
 	ts->fraction = ff;
 	return 1;
     }
-    if (do_d && sscanf(cstr, "{d '%d-%d-%d' %c",
-		       &yy, &mm, &dd, &c) == 4 && c == '}') {
+    if (do_d &&
+	(sscanf(cstr, "{d '%d-%d-%d' %c", &yy, &mm, &dd, &c) == 4) &&
+	(c == '}')) {
 	ts->year = yy;
 	ts->month = mm;
 	ts->day = dd;
 	return 1;
     }
-    if (do_t && sscanf(cstr, "{t '%d:%d:%d' %c",
-		       &hh, &mmm, &ss, &c) == 4 && c == '}') {
+    if (do_t && 
+	(sscanf(cstr, "{t '%d:%d:%d' %c", &hh, &mmm, &ss, &c) == 4) &&
+	(c == '}')) {
 	ts->hour = yy;
 	ts->minute = mmm;
 	ts->second = ss;
@@ -4336,7 +4365,7 @@ scan_dtts(VALUE str, int do_d, int do_t, TIMESTAMP_STRUCT *ts)
     i = sscanf(cstr, "%d-%d-%d %d:%d:%d%c%d",
 	       &yy, &mm, &dd, &hh, &mmm, &ss, &c, &ff);
     if (i >= 5) {
-	if (i > 6 && strchr(". \t", c) == NULL) {
+	if ((i > 6) && (strchr(". \t", c) == NULL)) {
 	    goto next;
 	}
 	ts->year = yy;
@@ -4350,13 +4379,13 @@ scan_dtts(VALUE str, int do_d, int do_t, TIMESTAMP_STRUCT *ts)
     }
 next:
     ff = ss = 0;
-    if (do_d && sscanf(cstr, "%d-%d-%d", &yy, &mm, &dd) == 3) {
+    if (do_d && (sscanf(cstr, "%d-%d-%d", &yy, &mm, &dd) == 3)) {
 	ts->year = yy;
 	ts->month = mm;
 	ts->day = dd;
 	return 1;
     }
-    if (do_t && sscanf(cstr, "%d:%d:%d", &hh, &mmm, &ss) == 3) {
+    if (do_t && (sscanf(cstr, "%d:%d:%d", &hh, &mmm, &ss) == 3)) {
 	ts->hour = hh;
 	ts->minute = mmm;
 	ts->second = ss;
@@ -4472,7 +4501,7 @@ date_init(int argc, VALUE *argv, VALUE self)
 	d = rb_funcall(y, IDmday, 0, NULL);
 	m = rb_funcall(y, IDmonth, 0, NULL);
 	y = rb_funcall(y, IDyear, 0, NULL);
-    } else if (argc == 1 && rb_obj_is_kind_of(y, rb_cString) == Qtrue) {
+    } else if ((argc == 1) && (rb_obj_is_kind_of(y, rb_cString) == Qtrue)) {
 	if (date_load1(self, y, 0) != Qnil) {
 	    return self;
 	}
@@ -4700,7 +4729,7 @@ time_init(int argc, VALUE *argv, VALUE self)
 	s = rb_funcall(h, IDsec, 0, NULL);
 	m = rb_funcall(h, IDmin, 0, NULL);
 	h = rb_funcall(h, IDhour, 0, NULL);
-    } else if (argc == 1 && rb_obj_is_kind_of(h, rb_cString) == Qtrue) {
+    } else if ((argc == 1) && (rb_obj_is_kind_of(h, rb_cString) == Qtrue)) {
 	if (time_load1(self, h, 0) != Qnil) {
 	    return self;
 	}
@@ -4956,7 +4985,7 @@ timestamp_init(int argc, VALUE *argv, VALUE self)
 	d  = rb_funcall(y, IDmday, 0, NULL);
 	m  = rb_funcall(y, IDmonth, 0, NULL);
 	y  = rb_funcall(y, IDyear, 0, NULL);
-    } else if (argc == 1 && rb_obj_is_kind_of(y, rb_cString) == Qtrue) {
+    } else if ((argc == 1) && (rb_obj_is_kind_of(y, rb_cString) == Qtrue)) {
 	if (timestamp_load1(self, y, 0) != Qnil) {
 	    return self;
 	}
@@ -5228,14 +5257,15 @@ stmt_cancel(VALUE self)
 static void
 check_ncols(STMT *q)
 {
-    if (q->hstmt != SQL_NULL_HSTMT && q->ncols <= 0 && q->coltypes == NULL) {
+    if ((q->hstmt != SQL_NULL_HSTMT) && (q->ncols <= 0) &&
+	(q->coltypes == NULL)) {
 	COLTYPE *coltypes = NULL;
 	SQLSMALLINT cols = 0;
 	
 	if (succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt,
 		      SQLNumResultCols(q->hstmt, &cols), NULL,
 		      "SQLNumResultCols")
-	    && cols > 0) {
+	    && (cols > 0)) {
 	    coltypes = make_coltypes(q->hstmt, cols, NULL);
 	    if (coltypes != NULL) {
 		q->ncols = cols;
@@ -5263,9 +5293,9 @@ stmt_nrows(VALUE self)
     char *msg;
 
     Data_Get_Struct(self, STMT, q);
-    if (q->hstmt != SQL_NULL_HSTMT &&
-	!succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt,
-		   SQLRowCount(q->hstmt, &rows), &msg, "SQLRowCount")) {
+    if ((q->hstmt != SQL_NULL_HSTMT) &&
+	(!succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt,
+		    SQLRowCount(q->hstmt, &rows), &msg, "SQLRowCount"))) {
 	rb_raise(Cerror, "%s", msg);
     }
     return INT2NUM(rows);
@@ -5287,7 +5317,7 @@ param_num_check(STMT *q, VALUE pnum, int mkpinfo, int needout)
 
     Check_Type(pnum, T_FIXNUM);
     vnum = NUM2INT(pnum);
-    if (mkpinfo && q->pinfo == NULL) {
+    if (mkpinfo && (q->pinfo == NULL)) {
 	char *msg = NULL;
 	SQLSMALLINT nump = 0;
 
@@ -5307,12 +5337,12 @@ param_num_check(STMT *q, VALUE pnum, int mkpinfo, int needout)
 	    }
 	}
     }
-    if (q->pinfo == NULL || vnum < 0 || vnum >= q->nump) {
+    if ((q->pinfo == NULL) || (vnum < 0) || (vnum >= q->nump)) {
 	rb_raise(rb_eArgError, "parameter number out of bounds");
     }
     if (needout) {
-	if (q->pinfo[vnum].iotype != SQL_PARAM_OUTPUT &&
-	    q->pinfo[vnum].iotype != SQL_PARAM_INPUT_OUTPUT) {
+	if ((q->pinfo[vnum].iotype != SQL_PARAM_OUTPUT) &&
+	    (q->pinfo[vnum].iotype != SQL_PARAM_INPUT_OUTPUT)) {
 	    rb_raise(Cerror, "not an output parameter");
 	}
     }
@@ -5450,10 +5480,10 @@ stmt_param_output_size(int argc, VALUE *argv, VALUE self)
     if (argc > 1) {
 	Check_Type(psize, T_FIXNUM);
 	vsize = NUM2INT(psize);
-	if (vsize > 0 && vsize < 4 * sizeof (double)) {
+	if ((vsize > 0) && (vsize < 4 * sizeof (double))) {
 	    vsize = 4 * sizeof (double);
 	}
-	q->pinfo[vnum].outsize = vsize > 0 ? vsize : 0;
+	q->pinfo[vnum].outsize = (vsize > 0) ? vsize : 0;
     }
     return INT2NUM(q->pinfo[vnum].outsize);
 }
@@ -5498,7 +5528,7 @@ stmt_cursorname(int argc, VALUE *argv, VALUE self)
 		       SQLGetCursorName(q->hstmt, (SQLTCHAR *) cname,
 					(SQLSMALLINT) sizeof (cname), &cnLen),
 		       &msg, "SQLGetCursorName")) {
-	    rb_raise(Cerror, "%s", &msg);
+	    rb_raise(Cerror, "%s", msg);
 	}
 #ifdef UNICODE
 	cnLen = (cnLen == 0) ? uc_strlen(cname) : (cnLen / sizeof (SQLWCHAR));
@@ -5600,7 +5630,7 @@ stmt_param(int argc, VALUE *argv, VALUE self)
     Check_Type(par, T_FIXNUM);
     Data_Get_Struct(self, STMT, q);
     i = FIX2INT(par);
-    if (i < 0 || i >= q->nump) {
+    if ((i < 0) || (i >= q->nump)) {
 	rb_raise(Cerror, set_err("Parameter out of bounds", 0));
     }
     return make_par(q, i);
@@ -5726,8 +5756,7 @@ do_fetch(STMT *q, int mode)
 						SQL_COLUMN_LABEL, name,
 						sizeof (name),
 						&name_len, NULL),
-			       &msg,
-			       "SQLColAttributes(SQL_COLUMN_LABEL)")) {
+			       &msg, "SQLColAttributes(SQL_COLUMN_LABEL)")) {
 		    rb_raise(Cerror, "%s", msg);
 		}
 		if (name_len >= sizeof (name)) {
@@ -5840,24 +5869,27 @@ do_fetch(STMT *q, int mode)
 
 	curlen = q->coltypes[i].size;
 	if (curlen == SQL_NO_TOTAL) {
+	    SQLLEN chunksize = SEGSIZE;	  
+
 	    totlen = 0;
 #ifdef UNICODE
-	    valp = ALLOC_N(char, SEGSIZE + sizeof (SQLWCHAR));
+	    valp = ALLOC_N(char, chunksize + sizeof (SQLWCHAR));
 #else
-	    valp = ALLOC_N(char, SEGSIZE + 1);
+	    valp = ALLOC_N(char, chunksize + 1);
 #endif
 	    freep = valp;
-	    while (curlen == SQL_NO_TOTAL || curlen > SEGSIZE) {
+	    while ((curlen == SQL_NO_TOTAL) || (curlen > chunksize)) {
 		SQLRETURN rc;
 		int ret;
 
 		rc = SQLGetData(q->hstmt, (SQLUSMALLINT) (i + 1),
 				type, (SQLPOINTER) (valp + totlen),
 #ifdef UNICODE
-				(type == SQL_C_CHAR || type == SQL_C_WCHAR) ?
-				SEGSIZE + sizeof (SQLWCHAR) : SEGSIZE,
+				((type == SQL_C_CHAR) || (type == SQL_C_WCHAR)) ?
+				(chunksize + sizeof (SQLWCHAR)) : chunksize,
 #else
-				(type == SQL_C_CHAR) ? SEGSIZE + 1 : SEGSIZE,
+				(type == SQL_C_CHAR) ?
+				(chunksize + 1) : chunksize,
 #endif
 				&curlen);
 		if (rc == SQL_NO_DATA) {
@@ -5876,17 +5908,18 @@ do_fetch(STMT *q, int mode)
 		    break;
 		}
 		if (curlen == SQL_NO_TOTAL) {
-		    totlen += SEGSIZE;
-		} else if (curlen > SEGSIZE) {
-		    totlen += SEGSIZE;
+		    totlen += chunksize;
+		} else if (curlen > chunksize) {
+		    totlen += chunksize;
+		    chunksize = curlen - chunksize;
 		} else {
 		    totlen += curlen;
 		    break;
 		}
 #ifdef UNICODE
-		REALLOC_N(valp, char, totlen + SEGSIZE + sizeof (SQLWCHAR));
+		REALLOC_N(valp, char, totlen + chunksize + sizeof (SQLWCHAR));
 #else
-		REALLOC_N(valp, char, totlen + SEGSIZE + 1);
+		REALLOC_N(valp, char, totlen + chunksize + 1);
 #endif
 		if (valp == NULL) {
 		    if (freep != NULL) {
@@ -6052,9 +6085,9 @@ stmt_fetch1(VALUE self, int bang)
     if (succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt, ret, &err, msg)) {
 	return do_fetch(q, DOFETCH_ARY | (bang ? DOFETCH_BANG : 0));
     }
-    if (err != NULL &&
-	(strncmp(err, "IM001", 5) == 0 ||
-	 strncmp(err, "HYC00", 5) == 0)) {
+    if ((err != NULL) &&
+	((strncmp(err, "IM001", 5) == 0) ||
+	 (strncmp(err, "HYC00", 5) == 0))) {
 usef:
 	/* Fallback to SQLFetch() when others not implemented */
 	msg = "SQLFetch";
@@ -6203,7 +6236,7 @@ stmt_fetch_many(VALUE self, VALUE arg)
 	max = NUM2INT(arg);
     }
     res = rb_ary_new();
-    for (i = 0; all || i < max; i++) {
+    for (i = 0; all || (i < max); i++) {
 	VALUE v = stmt_fetch1(self, 0);
 
 	if (v == Qnil) {
@@ -6227,8 +6260,8 @@ stmt_hash_mode(int argc, VALUE *argv, VALUE self)
     int mode = DOFETCH_HASH;
 
     rb_scan_args(argc, argv, "02", &withtab, &usesym);
-    if (withtab != Qtrue && withtab != Qfalse && withtab != Modbc &&
-	rb_obj_is_kind_of(withtab, rb_cHash) == Qtrue) {
+    if ((withtab != Qtrue) && (withtab != Qfalse) && (withtab != Modbc) &&
+	(rb_obj_is_kind_of(withtab, rb_cHash) == Qtrue)) {
 	VALUE v;
 
 	v = rb_hash_aref(withtab, ID2SYM(IDkey));
@@ -6239,7 +6272,7 @@ stmt_hash_mode(int argc, VALUE *argv, VALUE self)
 	} else if (v == ID2SYM(IDFixnum)) {
 	    mode = DOFETCH_HASHN;
 	} else {
-	    rb_raise(Cerror, "Unsupported key mode", 0);
+	    rb_raise(Cerror, "Unsupported key mode");
 	}
 	if (mode != DOFETCH_HASHN) {
 	    v = rb_hash_aref(withtab, ID2SYM(IDtable_names));
@@ -6293,9 +6326,9 @@ stmt_fetch_hash1(int argc, VALUE *argv, VALUE self, int bang)
     if (succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt, ret, &err, msg)) {
 	return do_fetch(q, mode | (bang ? DOFETCH_BANG : 0));
     }
-    if (err != NULL &&
-	(strncmp(err, "IM001", 5) == 0 ||
-	 strncmp(err, "HYC00", 5) == 0)) {
+    if ((err != NULL) &&
+	((strncmp(err, "IM001", 5) == 0) ||
+	 (strncmp(err, "HYC00", 5) == 0))) {
 usef:
 	/* Fallback to SQLFetch() when others not implemented */
 	msg = "SQLFetch";
@@ -6430,9 +6463,9 @@ stmt_each_hash(int argc, VALUE *argv, VALUE self)
 	withtab[0] = Modbc;
 	withtab[1] = Qfalse;
     } else {
-	withtab[0] = (mode == DOFETCH_HASH2 || mode == DOFETCH_HASHK2)
+	withtab[0] = ((mode == DOFETCH_HASH2) || (mode == DOFETCH_HASHK2))
 		   ? Qtrue : Qfalse;
-	withtab[1] = (mode == DOFETCH_HASHK || mode == DOFETCH_HASHK2)
+	withtab[1] = ((mode == DOFETCH_HASHK) || (mode == DOFETCH_HASHK2))
 		   ? Qtrue : Qfalse;
     }
     Data_Get_Struct(self, STMT, q);
@@ -6543,10 +6576,18 @@ stmt_prep_int(int argc, VALUE *argv, VALUE self, int mode)
     ssql = (SQLCHAR *) csql;
 #endif
     if ((mode & MAKERES_EXECD)) {
-	if (!succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, hstmt,
-		       SQLExecDirect(hstmt, ssql, SQL_NTS),
-		       &msg, "SQLExecDirect('%s')", csql)) {
+	SQLRETURN ret;
+
+	if (!succeeded_nodata(SQL_NULL_HENV, SQL_NULL_HDBC, hstmt,
+			      (ret = SQLExecDirect(hstmt, ssql, SQL_NTS)),
+			      &msg, "SQLExecDirect('%s')", csql)) {
 	    goto sqlerr;
+	}
+	if (ret == SQL_NO_DATA) {
+#ifdef UNICODE
+	    uc_free(ssql);
+#endif
+	    return Qnil;
 	}
     } else if (!succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, hstmt,
 			  SQLPrepare(hstmt, ssql, SQL_NTS),
@@ -6718,8 +6759,8 @@ bind_one_param(int pnum, VALUE arg, STMT *q, char **msgp, int *outpp)
 	    break;
 	}
     }
-    if (q->pinfo[pnum].iotype == SQL_PARAM_INPUT_OUTPUT ||
-	q->pinfo[pnum].iotype == SQL_PARAM_OUTPUT) {
+    if ((q->pinfo[pnum].iotype == SQL_PARAM_INPUT_OUTPUT) ||
+	(q->pinfo[pnum].iotype == SQL_PARAM_OUTPUT)) {
 	if (valp == NULL) {
 	    if (q->pinfo[pnum].outsize > 0) {
 		if (q->pinfo[pnum].outbuf != NULL) {
@@ -6811,6 +6852,7 @@ stmt_exec_int(int argc, VALUE *argv, VALUE self, int mode)
     STMT *q;
     int i, argnum, has_out_parms = 0;
     char *msg = NULL;
+    SQLRETURN ret;
 
     Data_Get_Struct(self, STMT, q);
     if (argc > q->nump - (EXEC_PARMXOUT(mode) < 0 ? 0 : 1)) {
@@ -6841,8 +6883,9 @@ stmt_exec_int(int argc, VALUE *argv, VALUE self, int mode)
 	    goto error;
 	}
     }
-    if (!succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt,
-		   SQLExecute(q->hstmt), &msg, "SQLExecute")) {
+    if (!succeeded_nodata(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt,
+			  (ret = SQLExecute(q->hstmt)),
+			  &msg, "SQLExecute")) {
 error:
 #ifdef UNICODE
 	for (i = 0; i < q->nump; i++) {
@@ -6870,6 +6913,9 @@ error:
 	callsql(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt,
 		SQLFreeStmt(q->hstmt, SQL_RESET_PARAMS),
 		"SQLFreeStmt(SQL_RESET_PARAMS)");
+    }
+    if (ret == SQL_NO_DATA) {
+	return Qnil;
     }
     return make_result(q->dbc, q->hstmt, self, mode);
 }
@@ -7016,7 +7062,7 @@ stmt_proc(int argc, VALUE *argv, VALUE self)
     if (argc == 1) {
 	return rb_funcall(Cproc, IDnew, 1, stmt);
     }
-    if (argc < 4 || pnum == Qnil) {
+    if ((argc < 4) || (pnum == Qnil)) {
 	pnum = INT2NUM(parnum);
     } else {
 	parnum = NUM2INT(pnum);
@@ -7157,22 +7203,22 @@ again:
 mktime:
 	return rb_funcall(rb_cTime, IDlocal, 7, y, m, d, hh, mm, ss, us);
     }
-    if (!once && (m = timestamp_load1(Ctimestamp, a1, -1)) != Qnil) {
+    if ((!once) && ((m = timestamp_load1(Ctimestamp, a1, -1)) != Qnil)) {
 	a1 = m;
 	once++;
 	goto again;
     }
-    if (!once && (m = date_load1(Cdate, a1, -1)) != Qnil) {
+    if ((!once) && ((m = date_load1(Cdate, a1, -1)) != Qnil)) {
 	a1 = m;
-	if (argc > 1 && (m = time_load1(Ctime, a2, -1)) != Qnil) {
+	if ((argc > 1) && ((m = time_load1(Ctime, a2, -1)) != Qnil)) {
 	    a2 = m;
 	}
 	once++;
 	goto again;
     }
-    if (!once && (m = time_load1(Ctime, a1, -1)) != Qnil) {
+    if ((!once) && ((m = time_load1(Ctime, a1, -1)) != Qnil)) {
 	a1 = m;
-	if (argc > 1 && (m = date_load1(Cdate, a2, -1)) != Qnil) {
+	if ((argc > 1) && ((m = date_load1(Cdate, a2, -1)) != Qnil)) {
 	    a2 = m;
 	}
 	once++;
@@ -7209,9 +7255,9 @@ again:
 mkdate:
 	return rb_funcall(rb_cDate, IDnew, 3, y, m, d);
     }
-    if (!once &&
-	((m = date_load1(Cdate, arg, -1)) != Qnil ||
-	 (m = timestamp_load1(Ctimestamp, arg, -1)) != Qnil)) {
+    if ((!once) &&
+	(((m = date_load1(Cdate, arg, -1)) != Qnil) ||
+	 ((m = timestamp_load1(Ctimestamp, arg, -1)) != Qnil))) {
 	arg = m;
 	once++;
 	goto again;

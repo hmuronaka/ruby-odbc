@@ -1,5 +1,9 @@
 require 'mkmf'
 
+if ! defined? PLATFORM
+  PLATFORM = RUBY_PLATFORM
+end
+
 def have_library_ex(lib, func="main", headers=nil)
   checking_for "#{func}() in -l#{lib}" do
     libs = append_library($libs, lib)
@@ -15,6 +19,7 @@ def have_library_ex(lib, func="main", headers=nil)
 end
  
 dir_config("odbc")
+have_header("version.h")
 have_header("sql.h") || begin
   puts "ERROR: sql.h not found"
   exit 1

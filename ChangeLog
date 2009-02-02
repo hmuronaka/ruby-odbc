@@ -1,6 +1,13 @@
 ODBC binding for Ruby
 ---------------------
 
+Mon Feb 02 2009 version 0.9996 released
+
+	* updates for Ruby > 1.8
+	* added Stephen Veit's SQL_NO_TOTAL handling to improve
+	  retrieving large SQL_C_BINARY data
+	* fixes for SQLExecute/SQLExecDirect returning SQL_NO_DATA
+
 Sat Apr 07 2007 version 0.9995 released
 
 	* init.c: prefer libiodbc.so.2 over libiodbc.so and
