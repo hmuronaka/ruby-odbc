@@ -8,7 +8,7 @@
  * and redistribution of this file and for a
  * DISCLAIMER OF ALL WARRANTIES.
  *
- * $Id: odbc.c,v 1.60 2009/02/02 18:06:28 chw Exp chw $
+ * $Id: odbc.c,v 1.61 2009/05/20 05:30:03 chw Exp chw $
  */
 
 #undef ODBCVER
@@ -154,6 +154,7 @@ typedef struct dbc {
 typedef struct {
     SQLSMALLINT type;
     SQLULEN coldef;
+    SQLULEN coldef_max;
     SQLSMALLINT scale;
     SQLLEN rlen;
     SQLSMALLINT nullable;
@@ -3197,6 +3198,7 @@ make_pinfo(SQLHSTMT hstmt, int nump, char **msgp)
 	pinfo[i].rlen = SQL_NULL_DATA;
 	pinfo[i].ctype = SQL_C_CHAR;
 	pinfo[i].outtype = SQL_CHAR;
+	pinfo[i].coldef_max = 0;
 	if (!succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, hstmt,
 		       SQLDescribeParam(hstmt, (SQLUSMALLINT) (i + 1),
 					&pinfo[i].type, &pinfo[i].coldef,
@@ -6755,7 +6757,32 @@ bind_one_param(int pnum, VALUE arg, STMT *q, char **msgp, int *outpp)
 	    coldef = 19;
 	    break;
 	default:
-	    coldef = vlen;
+	    /*
+	     * Patch adopted from the Perl DBD::ODBC module ...
+	     * per patch from Paul G. Weiss, who was experiencing re-preparing
+	     * of queries when the size of the bound string's were increasing
+	     * for example select * from tabtest where name = ?
+	     * then executing with 'paul' and then 'thomas' would cause
+	     * SQLServer to prepare the query twice, but if we ran 'thomas'
+	     * then 'paul', it would not re-prepare the query.  The key seems
+	     * to be allocating enough space for the largest parameter.
+	     * TBD: the default for this should be a tunable parameter.
+	     */
+	    if ((stype == SQL_VARCHAR) &&
+		(q->pinfo[pnum].iotype != SQL_PARAM_INPUT_OUTPUT) &&
+		(q->pinfo[pnum].iotype != SQL_PARAM_OUTPUT)) {
+		if (q->pinfo[pnum].coldef_max == 0) {
+		    q->pinfo[pnum].coldef_max = (vlen > 128) ? vlen : 128;
+		} else {
+		    /* bump up max, if needed */
+		    if (vlen > q->pinfo[pnum].coldef_max) {
+			q->pinfo[pnum].coldef_max = vlen;
+		    }
+		}
+		coldef = q->pinfo[pnum].coldef_max;
+	    } else {
+		coldef = vlen;
+	    }
 	    break;
 	}
     }
