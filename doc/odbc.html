@@ -27,7 +27,7 @@
   <body>
     <h1><a name="reference">Ruby ODBC Reference</a></h1>
     <div class = "lastmodifed">
-      Last update: Mon, 25 December 2006
+      Last update: Fri, 15 January 2010
     </div>
     <hr>
     <div>
@@ -590,9 +590,10 @@
           <code>ODBC::SQL_CHAR</code> (yielding string).
 	<dt><a name="run"><code>run(<var>sql</var>[,<var>args...</var>])</code></a>
 	<dd>Prepares and executes the query specified by <var>sql</var>
-	  with parameters bound
-	  from <var>args</var> and returns an
-	  <a href="#ODBC::Statement">ODBC::Statement</a>.
+	  with parameters bound from <var>args</var> and returns an
+	  <a href="#ODBC::Statement">ODBC::Statement</a> or nil, if
+	  the query did not produce a result set, e.g. when executing
+	  SQL insert, delete, or update statements.
 	<dt><a name="do"><code>do(<var>sql</var>[,<var>args...</var>])</code></a>
 	<dd>Prepares and executes the query as in
 	  <a href="#run"><code>run</code></a>,

@@ -1,6 +1,6 @@
-# $Id: README,v 1.35 2009/05/20 05:30:03 chw Exp chw $
+# $Id: README,v 1.36 2010/01/15 09:54:15 chw Exp chw $
 
-ruby-odbc-0.9997
+ruby-odbc-0.9998
 
 This is an ODBC binding for Ruby. So far it has been tested with
 
@@ -29,9 +29,9 @@ Requirements:
 
 Installation:
 
-    $ ruby extconf.rb [--enable-dlopen|--disable-dlopen]
-    $ make
-    # make install
+    $ ruby -Cext extconf.rb [--enable-dlopen|--disable-dlopen]
+    $ make -C ext
+    # make -C ext install
 
     --enable/disble-dlopen turns on/off special initialization
     code to make ruby-odbc agnostic to unixODBC/iODBC driver
@@ -42,25 +42,26 @@ Installation:
 
 Installation of utf8 version:
 
-    $ ruby -Cutf8 extconf.rb [--enable-dlopen|--disable-dlopen]
-    $ make -C utf8
-    # make -C utf8 install
+    $ ruby -Cext/utf8 extconf.rb [--enable-dlopen|--disable-dlopen]
+    $ make -C ext/utf8
+    # make -C ext/utf8 install
 
 Installation MSVC:
 
-    C:..>ruby extconf.rb
+    C:..>ruby -Cext extconf.rb
+    C:..>cd ext
     C:..>nmake
     C:..>nmake install
+    C:..>ruby -Cutf8 extconf.rb
     C:..>cd utf8
-    C:..>ruby extconf.rb
     C:..>nmake
     C:..>nmake install
 
 Testing:
 
-    $ ruby test.rb DSN [uid] [pwd]
+    $ ruby -Ctest test.rb DSN [uid] [pwd]
  or
-    $ ruby -KU -Cutf8 test.rb DSN [uid] [pwd]
+    $ ruby -KU -Ctest/utf8 test.rb DSN [uid] [pwd]
 
 Usage:
 

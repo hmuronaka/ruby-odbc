@@ -1,6 +1,11 @@
 ODBC binding for Ruby
 ---------------------
 
+Fri Jan 15 2010 version 0.9998 released
+
+	* documentation update
+	* reorganized directory layout for making a gem
+
 Wed May 20 2009 version 0.9997 released
 
 	* added Chad Johnson's FreeTDS/MSSQL patch to prevent from
