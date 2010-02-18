@@ -1,4 +1,4 @@
-# $Id: test.rb,v 1.6 2004/11/17 07:40:03 chw Exp chw $
+# $Id: test.rb,v 1.7 2010/02/18 12:30:43 chw Exp chw $
 #
 # Execute in ruby-odbc top directory.
 #
@@ -6,7 +6,7 @@
 #
 # Test creates and deletes table "test" in that DSN.
 
-require './odbc'
+require 'odbc'
 
 $dsn = ARGV.shift
 $uid = ARGV.shift

@@ -1,5 +1,9 @@
 require 'mkmf'
 
+if ! defined? PLATFORM
+  PLATFORM = RUBY_PLATFORM
+end
+
 def have_library_ex(lib, func="main", headers=nil)
   checking_for "#{func}() in -l#{lib}" do
     libs = append_library($libs, lib)
@@ -113,6 +117,11 @@ elsif PLATFORM =~ /(mingw|cygwin)/ then
   have_library("odbc32", "")
   have_library("odbccp32", "")
   have_library("user32", "")
+  have_func("SQLConfigDataSourceW", "odbcinst.h")
+  have_func("SQLWriteFileDSNW", "odbcinst.h")
+  have_func("SQLReadFileDSNW", "odbcinst.h")
+  have_func("SQLInstallerError", "odbcinst.h")
+  have_func("SQLInstallerErrorW", "odbcinst.h")
 elsif (testdlopen && PLATFORM !~ /(macos|darwin)/ && CONFIG["CC"] =~ /gcc/ && have_func("dlopen", "dlfcn.h") && have_library("dl", "dlopen")) then
   $LDFLAGS+=" -Wl,-init -Wl,ruby_odbc_init -Wl,-fini -Wl,ruby_odbc_fini"
   $CPPFLAGS+=" -DHAVE_SQLCONFIGDATASOURCE"

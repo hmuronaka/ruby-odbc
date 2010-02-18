@@ -1,6 +1,11 @@
 ODBC binding for Ruby
 ---------------------
 
+Thu Feb 18 2010 version 0.9999 released
+
+	* integrated Bosko Ivanisevic's fixes in ext/utf8/extconf.rb
+	  and test/test.rb and test/utf8/test.rb
+
 Fri Jan 15 2010 version 0.9998 released
 
 	* documentation update

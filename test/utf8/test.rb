@@ -1,4 +1,4 @@
-# $Id: test.rb,v 1.2 2004/11/17 07:40:03 chw Exp chw $
+# $Id: test.rb,v 1.3 2010/02/18 12:30:43 chw Exp chw $
 #
 # Execute in ruby-odbc utf8 directory.
 #
@@ -6,7 +6,7 @@
 #
 # Test creates and deletes table "test" in that DSN.
 
-require './odbc_utf8'
+require 'odbc_utf8'
 
 $dsn = ARGV.shift
 $uid = ARGV.shift
