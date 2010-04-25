@@ -8,7 +8,7 @@
  * and redistribution of this file and for a
  * DISCLAIMER OF ALL WARRANTIES.
  *
- * $Id: odbc.c,v 1.61 2009/05/20 05:30:03 chw Exp chw $
+ * $Id: odbc.c,v 1.62 2010/04/25 12:26:37 chw Exp chw $
  */
 
 #undef ODBCVER
@@ -363,7 +363,7 @@ mkutf(char *dest, SQLWCHAR *src, int len)
 	if (sizeof (SQLWCHAR) == (2 * sizeof (char))) {
 	    c &= 0xffff;
 	}
-	if (c < 0xc0) {
+	if (c < 0x80) {
 	    *cp++ = c;
 	} else if (c < 0x800) {
 	    *cp++ = 0xc0 | ((c >> 6) & 0x1f);
@@ -491,8 +491,11 @@ uc_from_utf(unsigned char *str, int len)
 	    while (str < strend) {
 		unsigned char c = str[0];
 
-		if (c < 0xc0) {
+		if (c < 0x80) {
 		    uc[i++] = c;
+		    ++str;
+		} else if (c <= 0xc1 || (c >= 0xf5 && c <= 0xff)) {
+		    /* illegal, ignored */
 		    ++str;
 		} else if (c < 0xe0) {
 		    if ((str[1] & 0xc0) == 0x80) {

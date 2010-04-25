@@ -1,6 +1,11 @@
 ODBC binding for Ruby
 ---------------------
 
+Sun Apr 25 2010 version 0.99991 released
+
+	* detect HAVE_LONG_LONG for builds with unixODBC
+	* UTF-8 coding/decoding fix for range 0x80..0xBF
+
 Thu Feb 18 2010 version 0.9999 released
 
 	* integrated Bosko Ivanisevic's fixes in ext/utf8/extconf.rb

@@ -98,6 +98,11 @@ elsif (testdlopen && PLATFORM !~ /(macos|darwin)/ && CONFIG["CC"] =~ /gcc/ && ha
   $CPPFLAGS+=" -DHAVE_SQLCONFIGDATASOURCE"
   $CPPFLAGS+=" -DHAVE_SQLINSTALLERERROR"
   $CPPFLAGS+=" -DUSE_DLOPEN_FOR_ODBC_LIBS"
+  if defined? have_type then
+    if have_type("SQLBIGINT", "sqltypes.h", "-DHAVE_LONG_LONG") then
+      $CPPFLAGS+=" -DHAVE_LONG_LONG"
+    end
+  end
 else
   have_library("odbc", "SQLAllocConnect") ||
     have_library("iodbc", "SQLAllocConnect")
@@ -107,6 +112,11 @@ else
     have_library("iodbcinst", "SQLConfigDataSource"))
   $have_odbcinst_h &&
     have_func("SQLInstallerError", "odbcinst.h")
+  if defined? have_type then
+    if have_type("SQLBIGINT", "sqltypes.h", "-DHAVE_LONG_LONG") then
+      $CPPFLAGS+=" -DHAVE_LONG_LONG"
+    end
+  end
 end
 
 create_makefile("odbc")
