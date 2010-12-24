@@ -8,7 +8,7 @@
  * and redistribution of this file and for a
  * DISCLAIMER OF ALL WARRANTIES.
  *
- * $Id: odbc.c,v 1.70 2010/09/16 06:52:23 chw Exp chw $
+ * $Id: odbc.c,v 1.71 2010/12/24 16:24:21 chw Exp chw $
  */
 
 #undef ODBCVER
@@ -251,7 +251,6 @@ static ID IDFixnum;
 static ID IDtable_names;
 static ID IDnew;
 static ID IDnow;
-static ID IDlocal;
 static ID IDname;
 static ID IDtable;
 static ID IDtype;
@@ -276,6 +275,7 @@ static ID IDencode;
 static ID IDparse;
 static ID IDutc;
 static ID IDlocal;
+static ID IDto_s;
 
 /*
  * Modes for dbc_info
@@ -4120,12 +4120,13 @@ dbc_transaction(VALUE self)
     rb_ary_store(a, 0, self);
     rb_ary_store(a, 1, Qnil);
     if ((ret = rb_rescue2(dbc_transbody, a, dbc_transfail, a,
-			  rb_eException)) != Qundef) {
+			  rb_eException, (VALUE) 0)) != Qundef) {
 	dbc_commit(self);
 	return ret;
     }
     ret = rb_ary_entry(a, 1);
-    rb_exc_raise(rb_exc_new3(CLASS_OF(ret), ret));
+    rb_exc_raise(rb_exc_new3(rb_obj_class(ret),
+			     rb_funcall(ret, IDto_s, 0, 0)));
     return Qnil;
 }
 
@@ -8045,7 +8046,8 @@ static struct {
 #endif
     { &IDparse, "parse" },
     { &IDutc, "utc" },
-    { &IDlocal, "local" }
+    { &IDlocal, "local" },
+    { &IDto_s, "to_s" }
 };
 
 /*
