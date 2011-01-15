@@ -1,6 +1,10 @@
 ODBC binding for Ruby
 ---------------------
 
+Sat Jan 15 2011 version 0.99994 released
+
+	* fixed column key caching, thanks Sean Noonan for bug report
+
 Fri Dec 24 2010 version 0.99993 released
 
 	* fixed error reporting in Database.transaction method,
