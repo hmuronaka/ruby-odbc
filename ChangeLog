@@ -1,6 +1,12 @@
 ODBC binding for Ruby
 ---------------------
 
+Wed Mar 13 2013 version 0.99995 released
+
+	* added ODBC::Database.use_sql_column_name= flag to switch
+	  usage of SQLColAttributes(SQL_COLUMN_LABEL) to 
+	  SQLColAttributes(SQL_COLUMN_NAME) on per connection basis
+
 Sat Jan 15 2011 version 0.99994 released
 
 	* fixed column key caching, thanks Sean Noonan for bug report

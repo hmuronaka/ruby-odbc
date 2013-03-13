@@ -1,6 +1,6 @@
 /*
  * ODBC-Ruby binding
- * Copyright (c) 2001-2011 Christian Werner <chw@ch-werner.de>
+ * Copyright (c) 2001-2013 Christian Werner <chw@ch-werner.de>
  * Portions copyright (c) 2004 Ryszard Niewisiewicz <micz@fibernet.pl>
  * Portions copyright (c) 2006 Carl Blakeley <cblakeley@openlinksw.co.uk>
  *
@@ -8,7 +8,7 @@
  * and redistribution of this file and for a
  * DISCLAIMER OF ALL WARRANTIES.
  *
- * $Id: odbc.c,v 1.72 2011/01/15 08:02:55 chw Exp chw $
+ * $Id: odbc.c,v 1.75 2013/03/13 19:31:13 chw Exp chw $
  */
 
 #undef ODBCVER
@@ -168,6 +168,7 @@ typedef struct dbc {
     VALUE rbtime;
     VALUE gmtime;
     int upc;
+    VALUE use_sql_column_name;
 } DBC;
 
 typedef struct {
@@ -1954,6 +1955,7 @@ dbc_new(int argc, VALUE *argv, VALUE self)
     list_init(&p->stmts, offsetof(STMT, link));
     p->hdbc = SQL_NULL_HDBC;
     p->upc = 0;
+    p->use_sql_column_name = Qfalse;
 #endif
     if (env != Qnil) {
 	ENV *e;
@@ -2193,6 +2195,20 @@ dbc_timeutc(int argc, VALUE *argv, VALUE self)
 	p->gmtime = (val != Qnil && val != Qfalse) ? Qtrue : Qfalse;
     }
     return p->gmtime;
+}
+
+static VALUE
+dbc_use_scn(int argc, VALUE *argv, VALUE self)
+{
+    DBC *p = get_dbc(self);
+    VALUE val;
+
+    if (argc > 0) {
+	rb_scan_args(argc, argv, "1", &val);
+	p->use_sql_column_name =
+	    (val != Qnil && val != Qfalse) ? Qtrue : Qfalse;
+    }
+    return p->use_sql_column_name;
 }
 
 /*
@@ -3183,7 +3199,7 @@ make_coltypes(SQLHSTMT hstmt, int ncols, char **msgp)
 {
     int i;
     COLTYPE *ret = NULL;
-    SQLLEN type, size;
+    SQLLEN type, size = 0;
 
     for (i = 0; i < ncols; i++) {
 	SQLUSMALLINT ic = i + 1;
@@ -3565,7 +3581,7 @@ upcase_if(char *string, int upc)
  */
 
 static VALUE
-make_column(SQLHSTMT hstmt, int i, int upc)
+make_column(SQLHSTMT hstmt, int i, int upc, int use_scn)
 {
     VALUE obj, v;
     SQLUSMALLINT ic = i + 1;
@@ -3580,10 +3596,12 @@ make_column(SQLHSTMT hstmt, int i, int upc)
 
     name[0] = 0;
     if (!succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, hstmt,
-		   SQLColAttributes(hstmt, ic, SQL_COLUMN_LABEL, name,
+		   SQLColAttributes(hstmt, ic, use_scn ? SQL_COLUMN_NAME :
+				    SQL_COLUMN_LABEL, name,
 				    (SQLSMALLINT) sizeof (name),
 				    &name_len, NULL),
-		   &msg, "SQLColAttributes(SQL_COLUMN_LABEL)")) {
+		   &msg, use_scn ? "SQLColAttributes(SQL_COLUMN_NAME)" :
+		   "SQLColAttributes(SQL_COLUMN_LABEL)")) {
 	rb_raise(Cerror, "%s", msg);
     }
     obj = rb_obj_alloc(Ccolumn);
@@ -5823,27 +5841,34 @@ stmt_column(int argc, VALUE *argv, VALUE self)
 {
     STMT *q;
     VALUE col;
+    int use_scn = 0;
 
     rb_scan_args(argc, argv, "1", &col);
     Check_Type(col, T_FIXNUM);
     Data_Get_Struct(self, STMT, q);
     check_ncols(q);
-    return make_column(q->hstmt, FIX2INT(col), q->upc);
+    if (q->dbcp != NULL && q->dbcp->use_sql_column_name == Qtrue) {
+	use_scn = 1;
+    }
+    return make_column(q->hstmt, FIX2INT(col), q->upc, use_scn);
 }
 
 static VALUE
 stmt_columns(int argc, VALUE *argv, VALUE self)
 {
     STMT *q;
-    int i;
+    int i, use_scn = 0;
     VALUE res, as_ary = Qfalse;
 
     rb_scan_args(argc, argv, "01", &as_ary);
     Data_Get_Struct(self, STMT, q);
     check_ncols(q);
+    if (q->dbcp != NULL && q->dbcp->use_sql_column_name == Qtrue) {
+	use_scn = 1;
+    }
     if (rb_block_given_p()) {
 	for (i = 0; i < q->ncols; i++) {
-	    rb_yield(make_column(q->hstmt, i, q->upc));
+	    rb_yield(make_column(q->hstmt, i, q->upc, use_scn));
 	}
 	return self;
     }
@@ -5855,7 +5880,7 @@ stmt_columns(int argc, VALUE *argv, VALUE self)
     for (i = 0; i < q->ncols; i++) {
 	VALUE obj;
 
-	obj = make_column(q->hstmt, i, q->upc);
+	obj = make_column(q->hstmt, i, q->upc, use_scn);
 	if (RTEST(as_ary)) {
 	    rb_ary_store(res, i, obj);
 	} else {
@@ -5918,7 +5943,7 @@ stmt_params(VALUE self)
 static VALUE
 do_fetch(STMT *q, int mode)
 {
-    int i, offc;
+    int i, use_scn = 0, offc;
     char **bufs, *msg;
     VALUE res;
 
@@ -5958,6 +5983,9 @@ do_fetch(STMT *q, int mode)
 	    }
 	}
     }
+    if (q->dbcp != NULL && q->dbcp->use_sql_column_name == Qtrue) {
+	use_scn = 1;
+    } 
     switch (mode & DOFETCH_MODES) {
     case DOFETCH_HASH:
     case DOFETCH_HASH2:
@@ -6008,10 +6036,13 @@ do_fetch(STMT *q, int mode)
 		if (!succeeded(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt,
 			       SQLColAttributes(q->hstmt,
 						(SQLUSMALLINT) (i + 1),
+						use_scn ? SQL_COLUMN_NAME :
 						SQL_COLUMN_LABEL, name,
 						sizeof (name),
 						&name_len, NULL),
-			       &msg, "SQLColAttributes(SQL_COLUMN_LABEL)")) {
+			       &msg, use_scn ?
+			       "SQLColAttributes(SQL_COLUMN_NAME)" :
+			       "SQLColAttributes(SQL_COLUMN_LABEL)")) {
 		    rb_raise(Cerror, "%s", msg);
 		}
 		if (name_len >= (SQLSMALLINT) sizeof (name)) {
@@ -6064,8 +6095,10 @@ do_fetch(STMT *q, int mode)
 		name[0] = 0;
 		callsql(SQL_NULL_HENV, SQL_NULL_HDBC, q->hstmt,
 			SQLColAttributes(q->hstmt, (SQLUSMALLINT) (i + 1),
+					 use_scn ? SQL_COLUMN_NAME :
 					 SQL_COLUMN_LABEL, name,
 					 sizeof (name), &name_len, NULL),
+			use_scn ? "SQLColAttributes(SQL_COLUMN_NAME)" :
 			"SQLColAttributes(SQL_COLUMN_LABEL)");
 		if (name_len >= (SQLSMALLINT) sizeof (name)) {
 		    name_len = sizeof (name) - 1;
@@ -8247,6 +8280,8 @@ Init_odbc()
     rb_define_method(Cdbc, "use_time=", dbc_timefmt, -1);
     rb_define_method(Cdbc, "use_utc", dbc_timeutc, -1);
     rb_define_method(Cdbc, "use_utc=", dbc_timeutc, -1);
+    rb_define_method(Cdbc, "use_sql_column_name", dbc_use_scn, -1);
+    rb_define_method(Cdbc, "use_sql_column_name=", dbc_use_scn, -1);
 
     /* connection options */
     rb_define_method(Cdbc, "get_option", dbc_getsetoption, -1);

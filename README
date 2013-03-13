@@ -1,6 +1,6 @@
-# $Id: README,v 1.41 2011/01/15 08:03:22 chw Exp chw $
+# $Id: README,v 1.42 2013/03/13 19:24:03 chw Exp chw $
 
-ruby-odbc-0.99994
+ruby-odbc-0.99995
 
 This is an ODBC binding for Ruby. So far it has been tested with
 
@@ -17,6 +17,8 @@ This is an ODBC binding for Ruby. So far it has been tested with
       on Windows NT4SP6 and 2000
 
     - Ruby 1.8.*, SQLite/ODBC >= 0.67, libiodbc 3.52.4 on Fedora Core 3 x86
+
+    - Ruby 2.0.0, SQLite/ODBC >= 0.93, unixODBC 2.2.14 on Ubuntu 12.04 x86
 
     Michael Neumann <neumann@s-direktnet.de> and
     Will Merrell <wmerrell@catalystcorp.com> reported successful compilation
